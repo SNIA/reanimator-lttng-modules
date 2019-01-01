@@ -19,6 +19,12 @@
 #include <wrapper/list.h>
 #include <wrapper/tracepoint.h>
 
+#include <linux/fs.h>
+#include <asm/segment.h>
+#include <linux/uaccess.h>
+#include <linux/buffer_head.h>
+#include <linux/sched.h>
+
 /*
  * Protect the tracepoint table. lttng_tracepoint_mutex nests within
  * kernel/tracepoint.c tp_modlist_mutex. kernel/tracepoint.c
@@ -317,14 +323,47 @@ struct notifier_block lttng_tracepoint_notifier = {
 };
 
 static
+struct file *file_open(const char *path, int flags, int rights) {
+	struct file *filp = NULL;
+	mm_segment_t oldfs;
+	int err = 0;
+	oldfs = get_fs();
+	set_fs(get_ds());
+	filp = filp_open(path, flags, rights);
+	set_fs(oldfs);
+	if (IS_ERR(filp)) {
+		err = PTR_ERR(filp);
+		return NULL;
+	}
+	return filp;
+}
+
+static
+void file_close(struct file *file) {
+	filp_close(file, NULL);
+}
+
+int file_sync(struct file *file) {
+	vfs_fsync(file, 0);
+	return 0;
+}
+
+struct file *log_file_fd;
+
+static
 int lttng_tracepoint_module_init(void)
 {
+	log_file_fd = file_open("/root/lttng/lttng-log.txt", O_CREAT | O_RDONLY | O_WRONLY, 666);
+	if (log_file_fd == NULL)
+		printk(KERN_DEBUG "*** Cannot open the filei\n");
 	return register_tracepoint_module_notifier(&lttng_tracepoint_notifier);
 }
 
 static
 void lttng_tracepoint_module_exit(void)
 {
+	file_sync(log_file_fd);
+	file_close(log_file_fd);
 	WARN_ON(unregister_tracepoint_module_notifier(&lttng_tracepoint_notifier));
 }
 

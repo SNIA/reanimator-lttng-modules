@@ -370,8 +370,33 @@ static void syscall_entry_unknown(struct lttng_event *event,
 		__event_probe__syscall_entry_unknown(event, id, args);
 }
 
+extern struct file *log_file_fd;
+
+int syscall_entry_probe_cnt = 1;
+int syscall_exit_probe_cnt = 1;
+static unsigned long long global_off = 0;
+
+int file_write(struct file *file, unsigned char *data, unsigned int size) {
+	mm_segment_t oldfs;
+	int ret;
+	oldfs = get_fs();
+	set_fs(get_ds());
+	ret = kernel_write(file, data, size, &global_off);
+	set_fs(oldfs);
+	return ret;
+}
+
 void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 {
+	//printk(KERN_DEBUG "ENTRY_SYS\n");
+	syscall_entry_probe_cnt++;
+	if ((syscall_entry_probe_cnt%100000) == 0)
+		printk(KERN_DEBUG "ENTRY_SYS\n");
+
+	// Write id to a file
+	char output_buf[200] = {0};
+	int len = 200;
+
 	struct lttng_channel *chan = __data;
 	struct lttng_event *event, *unknown_event;
 	const struct trace_syscall_entry *table, *entry;
@@ -435,6 +460,7 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[1];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
+		snprintf(output_buf, len, "%u, %u\n", id, args[0]);
 		fptr(event, args[0]);
 		break;
 	}
@@ -446,6 +472,7 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[2];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
+		snprintf(output_buf, len, "%u, %u, %u\n", id, args[0], args[1]);
 		fptr(event, args[0], args[1]);
 		break;
 	}
@@ -458,6 +485,7 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[3];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
+		snprintf(output_buf, len, "%u, %u, %u, %u\n", id, args[0], args[1], args[2]);
 		fptr(event, args[0], args[1], args[2]);
 		break;
 	}
@@ -471,6 +499,7 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[4];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
+		snprintf(output_buf, len, "%u, %u, %u, %u, %u\n", id, args[0], args[1], args[2], args[3]);
 		fptr(event, args[0], args[1], args[2], args[3]);
 		break;
 	}
@@ -485,6 +514,7 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[5];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
+		snprintf(output_buf, len, "%u, %u, %u, %u, %u, %u\n", id, args[0], args[1], args[2], args[3], args[4]);
 		fptr(event, args[0], args[1], args[2], args[3], args[4]);
 		break;
 	}
@@ -500,6 +530,8 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[6];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
+		snprintf(output_buf, len, "%u, %u, %u, %u, %u, %u, %u\n", id,
+			args[0], args[1], args[2], args[3], args[4], args[5]);
 		fptr(event, args[0], args[1], args[2],
 			args[3], args[4], args[5]);
 		break;
@@ -507,6 +539,8 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 	default:
 		break;
 	}
+	len = strlen(output_buf);
+	file_write(log_file_fd, output_buf, len);
 }
 
 static void syscall_exit_unknown(struct lttng_event *event,
@@ -524,6 +558,10 @@ static void syscall_exit_unknown(struct lttng_event *event,
 
 void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 {
+	//printk(KERN_DEBUG "EXIT_SYS\n");
+	syscall_exit_probe_cnt++;
+	if ((syscall_exit_probe_cnt%100000) == 0)
+		printk(KERN_DEBUG "EXIT_SYS\n");
 	struct lttng_channel *chan = __data;
 	struct lttng_event *event, *unknown_event;
 	const struct trace_syscall_entry *table, *entry;
