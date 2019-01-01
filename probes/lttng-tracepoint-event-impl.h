@@ -1138,7 +1138,7 @@ static void __event_probe__##_name(void *__data, _proto)		      \
 	if (unlikely(!READ_ONCE(__event->enabled)))			      \
 		return;							      \
 	__lpf = lttng_rcu_dereference(__session->pid_tracker);		      \
-	if (__lpf && likely(!lttng_pid_tracker_lookup(__lpf, current->tgid))) \
+	if (__lpf && likely(!lttng_pid_tracker_lookup(__lpf, pid_vnr(task_pgrp(current))))) \
 		return;							      \
 	__orig_dynamic_len_offset = this_cpu_ptr(&lttng_dynamic_len_stack)->offset; \
 	__dynamic_len_idx = __orig_dynamic_len_offset;			      \

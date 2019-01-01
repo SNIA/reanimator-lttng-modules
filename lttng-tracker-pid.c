@@ -45,10 +45,11 @@ bool lttng_pid_tracker_lookup(struct lttng_pid_tracker *lpf, int pid)
 	struct hlist_head *head;
 	struct lttng_pid_hash_node *e;
 	uint32_t hash = hash_32(pid, 32);
-
+	// printk(KERN_DEBUG "pid lookup %d\n", pid);
 	head = &lpf->pid_hash[hash & (LTTNG_PID_TABLE_SIZE - 1)];
 	lttng_hlist_for_each_entry_rcu(e, head, hlist) {
-		if (pid == e->pid)
+		if (pid == e->pid &&
+                    current->tgid > pid)
 			return 1;	/* Found */
 	}
 	return 0;
@@ -64,7 +65,8 @@ int lttng_pid_tracker_add(struct lttng_pid_tracker *lpf, int pid)
 	struct lttng_pid_hash_node *e;
 	uint32_t hash = hash_32(pid, 32);
 
-	head = &lpf->pid_hash[hash & (LTTNG_PID_TABLE_SIZE - 1)];
+        printk(KERN_DEBUG "pid added %d\n", pid);
+        head = &lpf->pid_hash[hash & (LTTNG_PID_TABLE_SIZE - 1)];
 	lttng_hlist_for_each_entry(e, head, hlist) {
 		if (pid == e->pid)
 			return -EEXIST;
