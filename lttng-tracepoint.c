@@ -353,7 +353,7 @@ struct file *log_file_fd;
 static
 int lttng_tracepoint_module_init(void)
 {
-	log_file_fd = file_open("/home/umit/research/lttng/lttng-log.txt", O_CREAT | O_RDONLY | O_WRONLY, 666);
+	log_file_fd = file_open("/tmp/lttng-log.txt", O_CREAT | O_RDWR, 0777);
 	if (log_file_fd == NULL)
 		printk(KERN_DEBUG "*** Cannot open the filei\n");
 	return register_tracepoint_module_notifier(&lttng_tracepoint_notifier);

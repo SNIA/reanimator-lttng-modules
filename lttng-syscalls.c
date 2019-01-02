@@ -17,6 +17,7 @@
 #include <linux/seq_file.h>
 #include <linux/stringify.h>
 #include <linux/file.h>
+#include <linux/fs.h>
 #include <linux/anon_inodes.h>
 #include <asm/ptrace.h>
 #include <asm/syscall.h>
@@ -381,7 +382,7 @@ int file_write(struct file *file, unsigned char *data, unsigned int size) {
 	int ret;
 	oldfs = get_fs();
 	set_fs(get_ds());
-	ret = kernel_write(file, data, size, &global_off);
+	ret = vfs_write(file, data, size, &global_off);
 	set_fs(oldfs);
 	return ret;
 }
@@ -540,7 +541,10 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		break;
 	}
 	len = strlen(output_buf);
-	file_write(log_file_fd, output_buf, len);
+        int ret = file_write(log_file_fd, output_buf, len);
+        if (ret < 0) {
+        	printk(KERN_DEBUG "log writing problem");
+        }
 }
 
 static void syscall_exit_unknown(struct lttng_event *event,
