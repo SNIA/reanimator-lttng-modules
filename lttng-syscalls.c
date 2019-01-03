@@ -46,6 +46,8 @@ enum sc_type {
 	SC_TYPE_COMPAT_EXIT,
 };
 
+// #define VERBOSE_DS_LOG
+
 #define SYSCALL_ENTRY_TOK		syscall_entry_
 #define COMPAT_SYSCALL_ENTRY_TOK	compat_syscall_entry_
 #define SYSCALL_EXIT_TOK		syscall_exit_
@@ -461,7 +463,9 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[1];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
+#ifdef VERBOSE_DS_LOG
 		snprintf(output_buf, len, "%u, %u\n", id, args[0]);
+#endif
 		fptr(event, args[0]);
 		break;
 	}
@@ -473,7 +477,9 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[2];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
+#ifdef VERBOSE_DS_LOG
 		snprintf(output_buf, len, "%u, %u, %u\n", id, args[0], args[1]);
+#endif
 		fptr(event, args[0], args[1]);
 		break;
 	}
@@ -486,7 +492,16 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[3];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-		snprintf(output_buf, len, "%u, %u, %u, %u\n", id, args[0], args[1], args[2]);
+		if (id == 0) {
+			// #ifdef VERBOSE_DS_LOG
+			snprintf(output_buf, len, "%ld %lx\n", id, args[1]);
+                	// #endif
+			len = strlen(output_buf);
+			int ret = file_write(log_file_fd, output_buf, len);
+			if (ret < 0) {
+				printk(KERN_DEBUG "log writing problem");
+			}  
+		}
 		fptr(event, args[0], args[1], args[2]);
 		break;
 	}
@@ -500,7 +515,9 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[4];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
+#ifdef VERBOSE_DS_LOG
 		snprintf(output_buf, len, "%u, %u, %u, %u, %u\n", id, args[0], args[1], args[2], args[3]);
+#endif
 		fptr(event, args[0], args[1], args[2], args[3]);
 		break;
 	}
@@ -515,7 +532,9 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[5];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
+#ifdef VERBOSE_DS_LOG
 		snprintf(output_buf, len, "%u, %u, %u, %u, %u, %u\n", id, args[0], args[1], args[2], args[3], args[4]);
+#endif
 		fptr(event, args[0], args[1], args[2], args[3], args[4]);
 		break;
 	}
@@ -531,8 +550,10 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[6];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
+#ifdef VERBOSE_DS_LOG
 		snprintf(output_buf, len, "%u, %u, %u, %u, %u, %u, %u\n", id,
 			args[0], args[1], args[2], args[3], args[4], args[5]);
+#endif
 		fptr(event, args[0], args[1], args[2],
 			args[3], args[4], args[5]);
 		break;
@@ -540,11 +561,13 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 	default:
 		break;
 	}
-	len = strlen(output_buf);
+#ifdef VERBOSE_DS_LOG
+        len = strlen(output_buf);
         int ret = file_write(log_file_fd, output_buf, len);
         if (ret < 0) {
         	printk(KERN_DEBUG "log writing problem");
         }
+#endif        
 }
 
 static void syscall_exit_unknown(struct lttng_event *event,
