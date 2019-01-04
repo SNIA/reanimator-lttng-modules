@@ -28,6 +28,8 @@
 #include <wrapper/rcu.h>
 #include <lttng-events.h>
 
+#include <lttng-capture-buffer.h>
+
 #ifndef CONFIG_COMPAT
 # ifndef is_compat_task
 #  define is_compat_task()	(0)
@@ -389,21 +391,21 @@ int file_write(struct file *file, unsigned char *data, unsigned int size) {
 	return ret;
 }
 
+// #ifdef VERBOSE_DS_LOG
+char output_buf[200] = {0};
+int len = 200;
+// #endif
+
 void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 {
-	//printk(KERN_DEBUG "ENTRY_SYS\n");
-	syscall_entry_probe_cnt++;
-	if ((syscall_entry_probe_cnt%100000) == 0)
-		printk(KERN_DEBUG "ENTRY_SYS\n");
-
-	// Write id to a file
-	char output_buf[200] = {0};
-	int len = 200;
-
 	struct lttng_channel *chan = __data;
 	struct lttng_event *event, *unknown_event;
 	const struct trace_syscall_entry *table, *entry;
 	size_t table_len;
+
+        syscall_entry_probe_cnt++;
+	if ((syscall_entry_probe_cnt%100000) == 0)
+		printk(KERN_DEBUG "ENTRY_SYS\n");
 
 	if (unlikely(in_compat_syscall())) {
 		struct lttng_syscall_filter *filter;
@@ -493,14 +495,7 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
 		if (id == 0) {
-			// #ifdef VERBOSE_DS_LOG
-			snprintf(output_buf, len, "%ld %lx\n", id, args[1]);
-                	// #endif
-			len = strlen(output_buf);
-			int ret = file_write(log_file_fd, output_buf, len);
-			if (ret < 0) {
-				printk(KERN_DEBUG "log writing problem");
-			}  
+                	log_syscall_args(id, args, 3);
 		}
 		fptr(event, args[0], args[1], args[2]);
 		break;
@@ -585,15 +580,15 @@ static void syscall_exit_unknown(struct lttng_event *event,
 
 void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 {
-	//printk(KERN_DEBUG "EXIT_SYS\n");
-	syscall_exit_probe_cnt++;
-	if ((syscall_exit_probe_cnt%100000) == 0)
-		printk(KERN_DEBUG "EXIT_SYS\n");
 	struct lttng_channel *chan = __data;
 	struct lttng_event *event, *unknown_event;
 	const struct trace_syscall_entry *table, *entry;
 	size_t table_len;
 	long id;
+
+	syscall_exit_probe_cnt++;
+	if ((syscall_exit_probe_cnt%100000) == 0)
+		printk(KERN_DEBUG "EXIT_SYS\n");
 
 	id = syscall_get_nr(current, regs);
 	if (unlikely(in_compat_syscall())) {
