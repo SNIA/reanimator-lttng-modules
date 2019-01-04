@@ -48,8 +48,6 @@ enum sc_type {
 	SC_TYPE_COMPAT_EXIT,
 };
 
-// #define VERBOSE_DS_LOG
-
 #define SYSCALL_ENTRY_TOK		syscall_entry_
 #define COMPAT_SYSCALL_ENTRY_TOK	compat_syscall_entry_
 #define SYSCALL_EXIT_TOK		syscall_exit_
@@ -375,26 +373,8 @@ static void syscall_entry_unknown(struct lttng_event *event,
 		__event_probe__syscall_entry_unknown(event, id, args);
 }
 
-extern struct file *log_file_fd;
-
-int syscall_entry_probe_cnt = 1;
-int syscall_exit_probe_cnt = 1;
-static unsigned long long global_off = 0;
-
-int file_write(struct file *file, unsigned char *data, unsigned int size) {
-	mm_segment_t oldfs;
-	int ret;
-	oldfs = get_fs();
-	set_fs(get_ds());
-	ret = vfs_write(file, data, size, &global_off);
-	set_fs(oldfs);
-	return ret;
-}
-
-// #ifdef VERBOSE_DS_LOG
-char output_buf[200] = {0};
-int len = 200;
-// #endif
+static atomic_t syscall_entry_read_cnt = {0};
+static atomic_t syscall_exit_read_cnt = {0};
 
 void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 {
@@ -402,10 +382,6 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 	struct lttng_event *event, *unknown_event;
 	const struct trace_syscall_entry *table, *entry;
 	size_t table_len;
-
-        syscall_entry_probe_cnt++;
-	if ((syscall_entry_probe_cnt%100000) == 0)
-		printk(KERN_DEBUG "ENTRY_SYS\n");
 
 	if (unlikely(in_compat_syscall())) {
 		struct lttng_syscall_filter *filter;
@@ -455,7 +431,7 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 	case 0:
 	{
 		void (*fptr)(void *__data) = entry->func;
-
+		log_syscall_args(id, NULL, 0);
 		fptr(event);
 		break;
 	}
@@ -465,9 +441,7 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[1];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-#ifdef VERBOSE_DS_LOG
-		snprintf(output_buf, len, "%u, %u\n", id, args[0]);
-#endif
+		log_syscall_args(id, args, 1);
 		fptr(event, args[0]);
 		break;
 	}
@@ -479,9 +453,7 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[2];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-#ifdef VERBOSE_DS_LOG
-		snprintf(output_buf, len, "%u, %u, %u\n", id, args[0], args[1]);
-#endif
+		log_syscall_args(id, args, 2);
 		fptr(event, args[0], args[1]);
 		break;
 	}
@@ -494,9 +466,12 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[3];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-		if (id == 0) {
-                	log_syscall_args(id, args, 3);
+		if (id == 0 && args[0] == 3) {
+			atomic_inc(&syscall_entry_read_cnt);
+			if ((atomic_read(&syscall_entry_read_cnt) % 100000) == 0)
+				printk(KERN_DEBUG "fsl-ds-capture: syscall read entry");
 		}
+		log_syscall_args(id, args, 3);
 		fptr(event, args[0], args[1], args[2]);
 		break;
 	}
@@ -510,9 +485,7 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[4];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-#ifdef VERBOSE_DS_LOG
-		snprintf(output_buf, len, "%u, %u, %u, %u, %u\n", id, args[0], args[1], args[2], args[3]);
-#endif
+		log_syscall_args(id, args, 4);
 		fptr(event, args[0], args[1], args[2], args[3]);
 		break;
 	}
@@ -527,9 +500,7 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[5];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-#ifdef VERBOSE_DS_LOG
-		snprintf(output_buf, len, "%u, %u, %u, %u, %u, %u\n", id, args[0], args[1], args[2], args[3], args[4]);
-#endif
+		log_syscall_args(id, args, 5);
 		fptr(event, args[0], args[1], args[2], args[3], args[4]);
 		break;
 	}
@@ -545,10 +516,7 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[6];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-#ifdef VERBOSE_DS_LOG
-		snprintf(output_buf, len, "%u, %u, %u, %u, %u, %u, %u\n", id,
-			args[0], args[1], args[2], args[3], args[4], args[5]);
-#endif
+		log_syscall_args(id, args, 6);
 		fptr(event, args[0], args[1], args[2],
 			args[3], args[4], args[5]);
 		break;
@@ -556,13 +524,6 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 	default:
 		break;
 	}
-#ifdef VERBOSE_DS_LOG
-        len = strlen(output_buf);
-        int ret = file_write(log_file_fd, output_buf, len);
-        if (ret < 0) {
-        	printk(KERN_DEBUG "log writing problem");
-        }
-#endif        
 }
 
 static void syscall_exit_unknown(struct lttng_event *event,
@@ -585,10 +546,6 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 	const struct trace_syscall_entry *table, *entry;
 	size_t table_len;
 	long id;
-
-	syscall_exit_probe_cnt++;
-	if ((syscall_exit_probe_cnt%100000) == 0)
-		printk(KERN_DEBUG "EXIT_SYS\n");
 
 	id = syscall_get_nr(current, regs);
 	if (unlikely(in_compat_syscall())) {
@@ -674,8 +631,12 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 			unsigned long arg1,
 			unsigned long arg2) = entry->func;
 		unsigned long args[3];
-
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
+                if (id == 0 && args[0] == 3) {
+			atomic_inc(&syscall_exit_read_cnt);
+			if ((atomic_read(&syscall_exit_read_cnt) % 100000) == 0)
+				printk(KERN_DEBUG "fsl-ds-capture: syscall read exit");
+		}
 		fptr(event, ret, args[0], args[1], args[2]);
 		break;
 	}
