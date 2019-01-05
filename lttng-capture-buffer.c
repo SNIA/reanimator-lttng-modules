@@ -5,6 +5,12 @@
  * Copyright (C) 2018 FSL Stony Brook University
  */
 
+#include <linux/fs.h>
+#include <asm/segment.h>
+#include <linux/uaccess.h>
+#include <linux/buffer_head.h>
+#include <linux/sched.h>
+#include <linux/slab.h>
 #include <lttng-capture-buffer.h>
 
 static struct file *file_open(const char *path, int flags, int rights);
@@ -12,6 +18,8 @@ static int file_close(struct file *file);
 static int file_sync(struct file *file);
 static int file_write(struct file *file, unsigned char *data,
 		      unsigned int size);
+static void copy_user_buffer(void *user_addr, unsigned long size,
+			     void *copy_buffer);
 
 static struct file *log_file_fd;
 static loff_t log_file_offset = 0;
@@ -57,6 +65,13 @@ void log_syscall_args(long syscall_no, unsigned long *args,
 	} while (ret < 0);
 }
 
+void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
+{
+	void *kernel_buffer = kmalloc(size, GFP_KERNEL);
+	copy_user_buffer(user_buffer, size, kernel_buffer);
+	kfree(kernel_buffer);
+}
+
 static struct file *file_open(const char *path, int flags, int rights)
 {
 	struct file *filp = NULL;
@@ -71,6 +86,35 @@ static struct file *file_open(const char *path, int flags, int rights)
 		return NULL;
 	}
 	return filp;
+}
+
+static void copy_user_buffer(void *user_addr, unsigned long size,
+			     void *copy_buffer)
+{
+	mm_segment_t old_fs;
+	unsigned long ret;
+
+	if (user_addr == NULL)
+		return;
+
+	old_fs = get_fs();
+	set_fs(KERNEL_DS);
+	pagefault_disable();
+
+	if (unlikely(!access_ok(VERIFY_READ,
+				(__force const char __user *)user_addr,
+				size))) {
+		return;
+	}
+
+	do {
+		ret = __copy_from_user_inatomic(
+			copy_buffer, (__force const char __user *)(user_addr),
+			size);
+	} while (ret != 0);
+
+	pagefault_enable();
+	set_fs(old_fs);
 }
 
 static int file_write(struct file *file, unsigned char *data, unsigned int size)

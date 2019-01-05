@@ -470,6 +470,7 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 			atomic_inc(&syscall_entry_read_cnt);
 			if ((atomic_read(&syscall_entry_read_cnt) % 100000) == 0)
 				printk(KERN_DEBUG "fsl-ds-capture: syscall read entry");
+                        copy_user_buffer_to_file((void *)args[1], args[2]);
 		}
 		log_syscall_args(id, args, 3);
 		fptr(event, args[0], args[1], args[2]);
