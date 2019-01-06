@@ -22,7 +22,14 @@ static void copy_user_buffer(void *user_addr, unsigned long size,
 			     void *copy_buffer);
 
 static struct file *log_file_fd;
+static struct file *buffer_file_fd;
 static loff_t log_file_offset = 0;
+
+struct buffer_header {
+	atomic_t record_id;
+	size_t sizeOfBuffer;
+	char buffer[0];
+};
 
 bool start_buffer_capturing(void)
 {
@@ -31,14 +38,45 @@ bool start_buffer_capturing(void)
 		printk(KERN_DEBUG
 		       "fsl-ds-logging: Can not open the log file\n");
 		return false;
-	} else {
-		return true;
 	}
+
+	buffer_file_fd = file_open(BUFFER_PATH, O_CREAT | O_RDWR, 0777);
+	if (buffer_file_fd == NULL) {
+		printk(KERN_DEBUG
+		       "fsl-ds-logging: Can not open the buffer file\n");
+		return false;
+	}
+
+	return true;
 }
 
 bool end_buffer_capturing(void)
 {
-	return file_sync(log_file_fd) && file_close(log_file_fd);
+	bool log_result = true, buffer_result = true;
+	if (log_file_fd != NULL) {
+		log_result &= file_sync(log_file_fd);
+		if (!log_result) {
+			printk(KERN_DEBUG
+			       "fsl-ds-logging: file sync for logging failed");
+		}
+		file_close(log_file_fd);
+
+	} else {
+		printk(KERN_DEBUG "fsl-ds-logging: logging fd is NULL");
+	}
+
+	if (buffer_file_fd != NULL) {
+		buffer_result &= file_sync(buffer_file_fd);
+		if (!log_result) {
+			printk(KERN_DEBUG
+			       "fsl-ds-logging: file sync for capturing buffer failed");
+		}
+		file_close(buffer_file_fd);
+	} else {
+		printk(KERN_DEBUG "fsl-ds-logging: buffer fd is NULL");
+	}
+
+	return buffer_result && log_result;
 }
 
 void log_syscall_args(long syscall_no, unsigned long *args,
@@ -50,6 +88,10 @@ void log_syscall_args(long syscall_no, unsigned long *args,
 	int arg_idx;
 	int ret = -1;
 	int buffer_length = 0;
+
+	if (log_file_fd == NULL) {
+		return;
+	}
 
 	snprintf(print_buffer, print_len, "%ld ", syscall_no);
 
@@ -65,10 +107,21 @@ void log_syscall_args(long syscall_no, unsigned long *args,
 	} while (ret < 0);
 }
 
-void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
+void copy_user_buffer_to_file(atomic_t *record_id, void *user_buffer,
+			      unsigned long size)
 {
-	void *kernel_buffer = kmalloc(size, GFP_KERNEL);
-	copy_user_buffer(user_buffer, size, kernel_buffer);
+	struct buffer_header *kernel_buffer = (struct buffer_header *)kmalloc(
+		sizeof(struct buffer_header) + size, GFP_KERNEL);
+
+	if (buffer_file_fd == NULL) {
+		return;
+	}
+
+	kernel_buffer->record_id = *record_id;
+	kernel_buffer->sizeOfBuffer = size;
+	copy_user_buffer(user_buffer, size, (void *)kernel_buffer->buffer);
+	file_write(buffer_file_fd, (void *)kernel_buffer,
+		   sizeof(*kernel_buffer) + size);
 	kfree(kernel_buffer);
 }
 
@@ -136,6 +189,6 @@ static int file_close(struct file *file)
 
 static int file_sync(struct file *file)
 {
-	vfs_fsync(file, 0);
-	return 0;
+	int bytes_not_synced = vfs_fsync(file, 0);
+	return bytes_not_synced == 0;
 }
