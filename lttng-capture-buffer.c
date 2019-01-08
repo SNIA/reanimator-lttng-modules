@@ -18,7 +18,7 @@ static int file_close(struct file *file);
 static int file_sync(struct file *file);
 static int file_write(struct file *file, unsigned char *data,
 		      unsigned int size);
-static void copy_user_buffer(void *user_addr, unsigned long size,
+static bool copy_user_buffer(void *user_addr, unsigned long size,
 			     void *copy_buffer);
 
 static struct file *log_file_fd;
@@ -143,15 +143,17 @@ void copy_user_buffer_to_file(atomic_t *record_id, void *user_buffer,
 	struct buffer_header *kernel_buffer = (struct buffer_header *)kmalloc(
 		sizeof(struct buffer_header) + size, GFP_KERNEL);
 
-	if (buffer_file_fd == NULL) {
+	if (buffer_file_fd == NULL || kernel_buffer == NULL) {
 		return;
 	}
 
 	kernel_buffer->record_id = *record_id;
 	kernel_buffer->sizeOfBuffer = size;
-	copy_user_buffer(user_buffer, size, (void *)kernel_buffer->buffer);
-	file_write(buffer_file_fd, (void *)kernel_buffer,
-		   sizeof(*kernel_buffer) + size);
+	if (copy_user_buffer(user_buffer, size,
+			     (void *)&kernel_buffer->buffer)) {
+		file_write(buffer_file_fd, (void *)kernel_buffer,
+			   sizeof(*kernel_buffer) + size);
+	}
 	kfree(kernel_buffer);
 }
 
@@ -171,14 +173,17 @@ static struct file *file_open(const char *path, int flags, int rights)
 	return filp;
 }
 
-static void copy_user_buffer(void *user_addr, unsigned long size,
+static bool copy_user_buffer(void *user_addr, unsigned long size,
 			     void *copy_buffer)
 {
 	mm_segment_t old_fs;
 	unsigned long ret;
 
-	if (user_addr == NULL)
-		return;
+	if (user_addr == NULL || copy_buffer == NULL) {
+		printk(KERN_DEBUG
+		       "fsl-ds-logging: could not get user addresses correctly");
+		return false;
+	}
 
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
@@ -187,7 +192,9 @@ static void copy_user_buffer(void *user_addr, unsigned long size,
 	if (unlikely(!access_ok(VERIFY_READ,
 				(__force const char __user *)user_addr,
 				size))) {
-		return;
+		printk(KERN_DEBUG
+		       "fsl-ds-logging: user buffer is not readable");
+		return false;
 	}
 
 	do {
@@ -198,6 +205,8 @@ static void copy_user_buffer(void *user_addr, unsigned long size,
 
 	pagefault_enable();
 	set_fs(old_fs);
+
+	return true;
 }
 
 static int file_write(struct file *file, unsigned char *data, unsigned int size)
