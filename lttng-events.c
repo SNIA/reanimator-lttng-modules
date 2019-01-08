@@ -43,6 +43,7 @@
 #include <wrapper/vzalloc.h>
 #include <wrapper/ringbuffer/backend.h>
 #include <wrapper/ringbuffer/frontend.h>
+#include <lttng-capture-buffer.h>
 
 #define METADATA_CACHE_DEFAULT_SIZE 4096
 
@@ -77,6 +78,7 @@ int _lttng_field_statedump(struct lttng_session *session,
 void synchronize_trace(void)
 {
 	synchronize_sched();
+	sync_buffers();
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0))
 #ifdef CONFIG_PREEMPT_RT_FULL
 	synchronize_rcu();

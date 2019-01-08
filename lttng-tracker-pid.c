@@ -49,7 +49,7 @@ bool lttng_pid_tracker_lookup(struct lttng_pid_tracker *lpf, int pid)
 	head = &lpf->pid_hash[hash & (LTTNG_PID_TABLE_SIZE - 1)];
 	lttng_hlist_for_each_entry_rcu(e, head, hlist) {
 		if (pid == e->pid &&
-                    current->tgid > pid)
+		    current->tgid == e->pid)
 			return 1;	/* Found */
 	}
 	return 0;

@@ -31,6 +31,8 @@ struct buffer_header {
 	char buffer[0];
 };
 
+extern atomic_t syscall_entry_read_cnt;
+
 bool start_buffer_capturing(void)
 {
 	log_file_fd = file_open(LOG_PATH, O_CREAT | O_RDWR, 0777);
@@ -50,6 +52,35 @@ bool start_buffer_capturing(void)
 	return true;
 }
 
+bool sync_buffers(void)
+{
+	bool log_result = true, buffer_result = true;
+	if (log_file_fd != NULL) {
+		log_result &= file_sync(log_file_fd);
+		if (!log_result) {
+			printk(KERN_DEBUG
+			       "fsl-ds-logging: file sync for logging failed");
+		}
+	} else {
+		printk(KERN_DEBUG "fsl-ds-logging: logging fd is NULL");
+	}
+
+	if (buffer_file_fd != NULL) {
+		buffer_result &= file_sync(buffer_file_fd);
+		if (!log_result) {
+			printk(KERN_DEBUG
+			       "fsl-ds-logging: file sync for capturing buffer failed");
+		}
+	} else {
+		printk(KERN_DEBUG "fsl-ds-logging: buffer fd is NULL");
+	}
+
+	printk(KERN_DEBUG "fsl-ds-logging: number of read syscalls %d",
+	       atomic_read(&syscall_entry_read_cnt));
+
+	return buffer_result && log_result;
+}
+
 bool end_buffer_capturing(void)
 {
 	bool log_result = true, buffer_result = true;
@@ -60,7 +91,6 @@ bool end_buffer_capturing(void)
 			       "fsl-ds-logging: file sync for logging failed");
 		}
 		file_close(log_file_fd);
-
 	} else {
 		printk(KERN_DEBUG "fsl-ds-logging: logging fd is NULL");
 	}

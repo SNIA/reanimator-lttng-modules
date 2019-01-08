@@ -373,9 +373,9 @@ static void syscall_entry_unknown(struct lttng_event *event,
 		__event_probe__syscall_entry_unknown(event, id, args);
 }
 
-static atomic_t syscall_entry_read_cnt = {0};
-static atomic_t syscall_exit_read_cnt = {0};
-static atomic_t syscall_record_id = {0};
+atomic_t syscall_entry_read_cnt = {0};
+atomic_t syscall_exit_read_cnt = {0};
+atomic_t syscall_record_id = {0};
 
 void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 {
@@ -469,7 +469,7 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[3];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-		if (id == 0 && args[0] == 3) {
+		if (id == 0 && args[0] == 3 && args[2] == 128) {
 			atomic_inc(&syscall_entry_read_cnt);
 			if ((atomic_read(&syscall_entry_read_cnt) % 100000) == 0)
 				printk(KERN_DEBUG "fsl-ds-capture: syscall read entry");
