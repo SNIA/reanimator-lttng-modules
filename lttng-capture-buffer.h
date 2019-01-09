@@ -17,7 +17,7 @@ bool sync_buffers(void);
 
 void log_syscall_args(long syscall_no, unsigned long *args,
 		      unsigned int nr_args);
-void copy_user_buffer_to_file(atomic_t *record_id, void *user_buffer,
-			      unsigned long size);
+void copy_user_buffer_to_file(atomic64_t *record_id, atomic64_t *read_cnt,
+			      void *user_buffer, unsigned long size);
 
 #endif

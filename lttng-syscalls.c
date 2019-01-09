@@ -373,9 +373,9 @@ static void syscall_entry_unknown(struct lttng_event *event,
 		__event_probe__syscall_entry_unknown(event, id, args);
 }
 
-atomic_t syscall_entry_read_cnt = {0};
-atomic_t syscall_exit_read_cnt = {0};
-atomic_t syscall_record_id = {0};
+atomic64_t syscall_entry_read_cnt = {0};
+atomic64_t syscall_exit_read_cnt = {0};
+atomic64_t syscall_record_id = {0};
 
 void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 {
@@ -384,7 +384,7 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 	const struct trace_syscall_entry *table, *entry;
 	size_t table_len;
 
-	atomic_inc(&syscall_record_id);
+	atomic64_inc(&syscall_record_id);
 
 	if (unlikely(in_compat_syscall())) {
 		struct lttng_syscall_filter *filter;
@@ -470,11 +470,9 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
 		if (id == 0 && args[0] == 3 && args[2] == 128) {
-			atomic_inc(&syscall_entry_read_cnt);
-			if ((atomic_read(&syscall_entry_read_cnt) % 100000) == 0)
+			atomic64_inc(&syscall_entry_read_cnt);
+			if ((atomic64_read(&syscall_entry_read_cnt) % 100000) == 0)
 				printk(KERN_DEBUG "fsl-ds-capture: syscall read entry");
-			copy_user_buffer_to_file(&syscall_record_id,
-						(void *)args[1], args[2]);
 		}
 		log_syscall_args(id, args, 3);
 		fptr(event, args[0], args[1], args[2]);
@@ -637,10 +635,14 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 			unsigned long arg2) = entry->func;
 		unsigned long args[3];
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-                if (id == 0 && args[0] == 3) {
-			atomic_inc(&syscall_exit_read_cnt);
-			if ((atomic_read(&syscall_exit_read_cnt) % 100000) == 0)
+                if (id == 0 && args[0] == 3 && args[2] == 128) {
+			atomic64_inc(&syscall_exit_read_cnt);
+			if ((atomic64_read(&syscall_exit_read_cnt) % 100000) == 0)
 				printk(KERN_DEBUG "fsl-ds-capture: syscall read exit");
+			copy_user_buffer_to_file(&syscall_record_id,
+						&syscall_exit_read_cnt,
+						(void *)args[1], args[2]);
+
 		}
 		fptr(event, ret, args[0], args[1], args[2]);
 		break;
