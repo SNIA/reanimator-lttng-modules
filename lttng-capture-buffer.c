@@ -145,8 +145,7 @@ void log_syscall_args(long syscall_no, unsigned long *args,
 	} while (ret < 0);
 }
 
-void copy_user_buffer_to_file(atomic64_t *record_id, void *user_buffer,
-			      unsigned long size)
+void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
 {
 	int ret = -1;
 	long total_size = sizeof(struct buffer_header) + size;
@@ -159,10 +158,10 @@ void copy_user_buffer_to_file(atomic64_t *record_id, void *user_buffer,
 
 	atomic64_set(&(kernel_buffer->record_id),
 		     fsl_pid_record_id_lookup(current->pid));
-	// kernel_buffer->record_id = *record_id;
 	kernel_buffer->sizeOfBuffer = size;
 	if (copy_user_buffer(user_buffer, size,
 			     (void *)&kernel_buffer->buffer)) {
+		// TODO(Umit) Integrate with new kernel_write
 		do {
 			ret = file_write(buffer_file_fd, (void *)kernel_buffer,
 					 total_size, &buffer_file_offset);
@@ -208,7 +207,6 @@ static long fsl_pid_record_id_lookup(int pid)
 	}
 	return -1;
 }
-
 
 static struct file *file_open(const char *path, int flags, int rights)
 {
@@ -273,7 +271,6 @@ static int file_write(struct file *file, const char *data, unsigned int size,
 	set_fs(oldfs);
 	return ret;
 }
-
 
 static int file_close(struct file *file)
 {

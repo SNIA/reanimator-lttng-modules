@@ -22,8 +22,7 @@ bool sync_buffers(void);
 
 void log_syscall_args(long syscall_no, unsigned long *args,
 		      unsigned int nr_args);
-void copy_user_buffer_to_file(atomic64_t *record_id, void *user_buffer,
-			      unsigned long size);
+void copy_user_buffer_to_file(void *user_buffer, unsigned long size);
 void fsl_pid_record_id_map(int pid, long record_id);
 
 struct buffer_header {

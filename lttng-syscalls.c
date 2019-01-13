@@ -645,8 +645,7 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 			atomic64_inc(&syscall_exit_buffer_cnt);
 			if ((atomic64_read(&syscall_exit_buffer_cnt) % 100000) == 0)
 				printk(KERN_DEBUG "fsl-ds-capture: syscall read exit");
-			copy_user_buffer_to_file(&syscall_record_id,
-						(void *)args[1], args[2]);
+			copy_user_buffer_to_file((void *)args[1], args[2]);
 
 		}
 		fptr(event, ret, args[0], args[1], args[2]);
