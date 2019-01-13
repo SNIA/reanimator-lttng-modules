@@ -373,9 +373,8 @@ static void syscall_entry_unknown(struct lttng_event *event,
 		__event_probe__syscall_entry_unknown(event, id, args);
 }
 
-atomic64_t syscall_entry_buffer_cnt = {0};
 atomic64_t syscall_exit_buffer_cnt = {0};
-atomic64_t syscall_record_id = {0};
+extern atomic64_t syscall_record_id;
 
 void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 {
@@ -473,11 +472,6 @@ void syscall_entry_probe(void *__data, struct pt_regs *regs, long id)
 		unsigned long args[3];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-		if (id == 0 && args[0] == 3 && args[2] == 128) {
-			atomic64_inc(&syscall_entry_buffer_cnt);
-			if ((atomic64_read(&syscall_entry_buffer_cnt) % 100000) == 0)
-				printk(KERN_DEBUG "fsl-ds-capture: syscall read entry");
-		}
 #ifdef VERBOSE_SYS_CALLS
 		log_syscall_args(id, args, 3);
 #endif
@@ -652,7 +646,6 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 			if ((atomic64_read(&syscall_exit_buffer_cnt) % 100000) == 0)
 				printk(KERN_DEBUG "fsl-ds-capture: syscall read exit");
 			copy_user_buffer_to_file(&syscall_record_id,
-						&syscall_exit_buffer_cnt,
 						(void *)args[1], args[2]);
 
 		}

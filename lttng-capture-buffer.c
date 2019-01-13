@@ -11,7 +11,9 @@
 #include <linux/buffer_head.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
+#include <linux/types.h>
 #include <lttng-capture-buffer.h>
+#include <wrapper/list.h>
 
 static struct file *file_open(const char *path, int flags, int rights);
 static int file_close(struct file *file);
@@ -20,18 +22,16 @@ static int file_write(struct file *file, const char *data, unsigned int size,
 		      loff_t *offset);
 static bool copy_user_buffer(void *user_addr, unsigned long size,
 			     void *copy_buffer);
+static long fsl_pid_record_id_lookup(int pid);
 
 static struct file *log_file_fd;
 static struct file *buffer_file_fd;
 static loff_t log_file_offset = 0;
 static loff_t buffer_file_offset = 0;
 
-struct buffer_header {
-	atomic64_t record_id;
-	size_t sizeOfBuffer;
-	char buffer[0];
-};
+struct hlist_head pid_record_id[FSL_LTTNG_PID_TABLE_SIZE];
 
+atomic64_t syscall_record_id = {0};
 extern atomic64_t syscall_exit_buffer_cnt;
 
 bool start_buffer_capturing(void)
@@ -145,9 +145,10 @@ void log_syscall_args(long syscall_no, unsigned long *args,
 	} while (ret < 0);
 }
 
-void copy_user_buffer_to_file(atomic64_t *record_id, atomic64_t *read_cnt,
-			      void *user_buffer, unsigned long size)
+void copy_user_buffer_to_file(atomic64_t *record_id, void *user_buffer,
+			      unsigned long size)
 {
+	int ret = -1;
 	long total_size = sizeof(struct buffer_header) + size;
 	struct buffer_header *kernel_buffer = (struct buffer_header *)kcalloc(
 		total_size, sizeof(char), GFP_KERNEL);
@@ -156,15 +157,58 @@ void copy_user_buffer_to_file(atomic64_t *record_id, atomic64_t *read_cnt,
 		return;
 	}
 
-	kernel_buffer->record_id = *record_id;
+	atomic64_set(&(kernel_buffer->record_id),
+		     fsl_pid_record_id_lookup(current->pid));
+	// kernel_buffer->record_id = *record_id;
 	kernel_buffer->sizeOfBuffer = size;
 	if (copy_user_buffer(user_buffer, size,
 			     (void *)&kernel_buffer->buffer)) {
-		file_write(buffer_file_fd, (void *)kernel_buffer, total_size,
-			   &buffer_file_offset);
+		do {
+			ret = file_write(buffer_file_fd, (void *)kernel_buffer,
+					 total_size, &buffer_file_offset);
+		} while (ret < 0);
 	}
 	kfree(kernel_buffer);
 }
+
+void fsl_pid_record_id_map(int pid, long record_id)
+{
+	struct hlist_head *head;
+	struct fsl_lttng_pid_hash_node *node;
+	uint32_t hash = hash_32(pid, 32);
+
+	head = &pid_record_id[hash & (FSL_LTTNG_PID_TABLE_SIZE - 1)];
+	lttng_hlist_for_each_entry(node, head, hlist)
+	{
+		if (pid == node->pid) {
+			node->record_id = record_id;
+			return;
+		}
+	}
+	node = kmalloc(sizeof(struct fsl_lttng_pid_hash_node), GFP_KERNEL);
+	if (!node)
+		return;
+	node->pid = pid;
+	node->record_id = record_id;
+	hlist_add_head_rcu(&node->hlist, head);
+}
+
+static long fsl_pid_record_id_lookup(int pid)
+{
+	struct hlist_head *head;
+	struct fsl_lttng_pid_hash_node *node;
+	uint32_t hash = hash_32(pid, 32);
+
+	head = &pid_record_id[hash & (FSL_LTTNG_PID_TABLE_SIZE - 1)];
+	lttng_hlist_for_each_entry(node, head, hlist)
+	{
+		if (pid == node->pid) {
+			return node->record_id;
+		}
+	}
+	return -1;
+}
+
 
 static struct file *file_open(const char *path, int flags, int rights)
 {

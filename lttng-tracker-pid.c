@@ -20,6 +20,8 @@
 #include <wrapper/list.h>
 #include <lttng-events.h>
 
+#include <lttng-capture-buffer.h>
+
 extern atomic64_t syscall_record_id;
 
 /*
@@ -51,7 +53,11 @@ bool lttng_pid_tracker_lookup(struct lttng_pid_tracker *lpf, int pid)
 	lttng_hlist_for_each_entry_rcu(e, head, hlist) {
 		if (pid == e->pid &&
 		    current->tgid == e->pid) {
-			atomic64_inc(&syscall_record_id);
+			// atomic64_inc(&syscall_record_id);
+			long record_id =
+				atomic64_add_return(1, &syscall_record_id);
+			fsl_pid_record_id_map(current->pid,
+					      record_id);
 			return 1;	/* Found */
                 }
 	}
