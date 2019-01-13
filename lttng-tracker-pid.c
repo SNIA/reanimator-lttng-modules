@@ -20,6 +20,8 @@
 #include <wrapper/list.h>
 #include <lttng-events.h>
 
+extern atomic64_t syscall_record_id;
+
 /*
  * Hash table is allocated and freed when there are no possible
  * concurrent lookups (ensured by the alloc/free caller). However,
@@ -45,12 +47,13 @@ bool lttng_pid_tracker_lookup(struct lttng_pid_tracker *lpf, int pid)
 	struct hlist_head *head;
 	struct lttng_pid_hash_node *e;
 	uint32_t hash = hash_32(pid, 32);
-	// printk(KERN_DEBUG "pid lookup %d\n", pid);
 	head = &lpf->pid_hash[hash & (LTTNG_PID_TABLE_SIZE - 1)];
 	lttng_hlist_for_each_entry_rcu(e, head, hlist) {
 		if (pid == e->pid &&
-		    current->tgid == e->pid)
+		    current->tgid == e->pid) {
+			atomic64_inc(&syscall_record_id);
 			return 1;	/* Found */
+                }
 	}
 	return 0;
 }
@@ -65,7 +68,8 @@ int lttng_pid_tracker_add(struct lttng_pid_tracker *lpf, int pid)
 	struct lttng_pid_hash_node *e;
 	uint32_t hash = hash_32(pid, 32);
 
-        printk(KERN_DEBUG "pid added %d\n", pid);
+        printk(KERN_DEBUG "fsl-ds-logging: pid added %d\n", pid);
+        atomic64_set(&syscall_record_id, 0);
         head = &lpf->pid_hash[hash & (LTTNG_PID_TABLE_SIZE - 1)];
 	lttng_hlist_for_each_entry(e, head, hlist) {
 		if (pid == e->pid)

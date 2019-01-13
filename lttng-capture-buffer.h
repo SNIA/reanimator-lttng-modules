@@ -20,4 +20,6 @@ void log_syscall_args(long syscall_no, unsigned long *args,
 void copy_user_buffer_to_file(atomic64_t *record_id, atomic64_t *read_cnt,
 			      void *user_buffer, unsigned long size);
 
+// #define VERBOSE_SYS_CALLS
+
 #endif

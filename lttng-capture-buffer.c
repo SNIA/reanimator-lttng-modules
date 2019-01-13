@@ -32,7 +32,7 @@ struct buffer_header {
 	char buffer[0];
 };
 
-extern atomic64_t syscall_entry_read_cnt;
+extern atomic64_t syscall_exit_buffer_cnt;
 
 bool start_buffer_capturing(void)
 {
@@ -79,7 +79,7 @@ bool sync_buffers(void)
 	}
 
 	printk(KERN_DEBUG "fsl-ds-logging: number of read syscalls %ld",
-	       atomic64_read(&syscall_entry_read_cnt));
+	       atomic64_read(&syscall_exit_buffer_cnt));
 
 	return buffer_result && log_result;
 }
