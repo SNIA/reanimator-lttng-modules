@@ -206,6 +206,8 @@ static void initialize_syscall_buffer_map(void)
 {
 	bitmap_set(fsl_syscall_buffer_map, __NR_read, 1);
 	syscall_buf_handlers[__NR_read] = &read_syscall_handler;
+	bitmap_set(fsl_syscall_buffer_map, __NR_write, 1);
+	syscall_buf_handlers[__NR_write] = &write_syscall_handler;
 }
 
 static long fsl_pid_record_id_lookup(int pid)
