@@ -8,6 +8,17 @@
 #ifndef _LTTNG_CAPTUREBUFFER_H
 #define _LTTNG_CAPTUREBUFFER_H
 
+#include <linux/fs.h>
+#include <asm/segment.h>
+#include <linux/uaccess.h>
+#include <linux/buffer_head.h>
+#include <linux/sched.h>
+#include <linux/slab.h>
+#include <linux/types.h>
+#include <wrapper/list.h>
+#include <asm/syscall.h>
+#include <linux/bitmap.h>
+
 // #define VERBOSE_SYS_CALLS
 
 #define LOG_PATH "/tmp/lttng-log.txt"
@@ -15,15 +26,6 @@
 
 #define FSL_LTTNG_PID_HASH_BITS 10
 #define FSL_LTTNG_PID_TABLE_SIZE (1 << FSL_LTTNG_PID_HASH_BITS)
-
-bool start_buffer_capturing(void);
-bool end_buffer_capturing(void);
-bool sync_buffers(void);
-
-void log_syscall_args(long syscall_no, unsigned long *args,
-		      unsigned int nr_args);
-void copy_user_buffer_to_file(void *user_buffer, unsigned long size);
-void fsl_pid_record_id_map(int pid, long record_id);
 
 struct buffer_header {
 	atomic64_t record_id;
@@ -40,5 +42,24 @@ struct fsl_lttng_pid_hash_node {
 	int pid;
 	long record_id;
 };
+
+enum fsl_syscall_event { syscall_buffer_enter, syscall_buffer_exit };
+
+typedef enum fsl_syscall_event fsl_event_type;
+
+typedef void (*syscall_buffer_handler)(fsl_event_type event,
+				       unsigned long *args,
+				       unsigned int nr_args);
+
+bool start_buffer_capturing(void);
+bool end_buffer_capturing(void);
+bool sync_buffers(void);
+
+void log_syscall_args(long syscall_no, unsigned long *args,
+		      unsigned int nr_args);
+void fsl_pid_record_id_map(int pid, long record_id);
+void fsl_syscall_buffer_handler(long syscall_no, fsl_event_type event,
+				unsigned long *args, unsigned int nr_args);
+void copy_user_buffer_to_file(void *user_buffer, unsigned long size);
 
 #endif

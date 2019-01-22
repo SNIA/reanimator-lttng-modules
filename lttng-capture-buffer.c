@@ -5,15 +5,8 @@
  * Copyright (C) 2018 FSL Stony Brook University
  */
 
-#include <linux/fs.h>
-#include <asm/segment.h>
-#include <linux/uaccess.h>
-#include <linux/buffer_head.h>
-#include <linux/sched.h>
-#include <linux/slab.h>
-#include <linux/types.h>
 #include <lttng-capture-buffer.h>
-#include <wrapper/list.h>
+#include <fsl-lttng-syscall-handlers.h>
 
 static struct file *file_open(const char *path, int flags, int rights);
 static int file_close(struct file *file);
@@ -23,6 +16,7 @@ static int file_write(struct file *file, const char *data, unsigned int size,
 static bool copy_user_buffer(void *user_addr, unsigned long size,
 			     void *copy_buffer);
 static long fsl_pid_record_id_lookup(int pid);
+static void initialize_syscall_buffer_map(void);
 
 static struct file *log_file_fd;
 static struct file *buffer_file_fd;
@@ -33,6 +27,9 @@ struct hlist_head pid_record_id[FSL_LTTNG_PID_TABLE_SIZE];
 
 atomic64_t syscall_record_id = {0};
 extern atomic64_t syscall_exit_buffer_cnt;
+
+DECLARE_BITMAP(fsl_syscall_buffer_map, NR_syscalls);
+syscall_buffer_handler syscall_buf_handlers[NR_syscalls];
 
 bool start_buffer_capturing(void)
 {
@@ -51,6 +48,8 @@ bool start_buffer_capturing(void)
 		       "fsl-ds-logging: Can not open the buffer file\n");
 		return false;
 	}
+
+	initialize_syscall_buffer_map();
 
 	return true;
 }
@@ -190,6 +189,23 @@ void fsl_pid_record_id_map(int pid, long record_id)
 	node->pid = pid;
 	node->record_id = record_id;
 	hlist_add_head_rcu(&node->hlist, head);
+}
+
+void fsl_syscall_buffer_handler(long syscall_no, fsl_event_type event,
+				unsigned long *args, unsigned int nr_args)
+{
+	if (test_bit(syscall_no, fsl_syscall_buffer_map)
+	    && fsl_pid_record_id_lookup(current->pid) != -1) {
+		syscall_buffer_handler handler =
+			syscall_buf_handlers[syscall_no];
+		handler(event, args, nr_args);
+	}
+}
+
+static void initialize_syscall_buffer_map(void)
+{
+	bitmap_set(fsl_syscall_buffer_map, __NR_read, 1);
+	syscall_buf_handlers[__NR_read] = &read_syscall_handler;
 }
 
 static long fsl_pid_record_id_lookup(int pid)
