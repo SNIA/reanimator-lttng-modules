@@ -53,7 +53,6 @@ typedef void (*syscall_buffer_handler)(fsl_event_type event,
 
 bool start_buffer_capturing(void);
 bool end_buffer_capturing(void);
-bool sync_buffers(void);
 
 void log_syscall_args(long syscall_no, unsigned long *args,
 		      unsigned int nr_args);

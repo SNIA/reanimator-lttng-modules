@@ -16,7 +16,6 @@
 #include <linux/module.h>
 
 #include <lttng-tracepoint.h>
-#include <lttng-capture-buffer.h>
 #include <wrapper/list.h>
 #include <wrapper/tracepoint.h>
 
@@ -320,14 +319,12 @@ struct notifier_block lttng_tracepoint_notifier = {
 static
 int lttng_tracepoint_module_init(void)
 {
-	start_buffer_capturing();
 	return register_tracepoint_module_notifier(&lttng_tracepoint_notifier);
 }
 
 static
 void lttng_tracepoint_module_exit(void)
 {
-	end_buffer_capturing();
 	WARN_ON(unregister_tracepoint_module_notifier(&lttng_tracepoint_notifier));
 }
 

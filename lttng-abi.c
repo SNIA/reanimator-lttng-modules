@@ -44,6 +44,7 @@
 #include <lttng-tracer.h>
 #include <lttng-tp-mempool.h>
 #include <lib/ringbuffer/frontend_types.h>
+#include <lttng-capture-buffer.h>
 
 /*
  * This is LTTng's own personal way to create a system call as an external
@@ -59,6 +60,8 @@ static const struct file_operations lttng_event_fops;
 static struct file_operations lttng_stream_ring_buffer_file_operations;
 
 static int put_u64(uint64_t val, unsigned long arg);
+
+static bool isFSLModuleInitialized = false;
 
 /*
  * Teardown management: opened file descriptors keep a refcount on the module,
@@ -317,8 +320,19 @@ long lttng_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return lttng_abi_syscall_list();
 	case LTTNG_KERNEL_OLD_WAIT_QUIESCENT:
 	case LTTNG_KERNEL_WAIT_QUIESCENT:
+	{
+        	if (arg == 0) {
+        		if (!isFSLModuleInitialized) {
+				start_buffer_capturing();
+				isFSLModuleInitialized = true;
+			} else {
+				end_buffer_capturing();
+				isFSLModuleInitialized = false;
+			}
+		}
 		synchronize_trace();
 		return 0;
+	}
 	case LTTNG_KERNEL_OLD_CALIBRATE:
 	{
 		struct lttng_kernel_old_calibrate __user *ucalibrate =

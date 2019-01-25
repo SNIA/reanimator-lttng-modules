@@ -33,8 +33,14 @@ syscall_buffer_handler syscall_buf_handlers[NR_syscalls];
 
 bool start_buffer_capturing(void)
 {
-	log_file_fd =
-		file_open(LOG_PATH, O_CREAT | O_WRONLY | O_LARGEFILE, 0777);
+	long truncate_result = 0;
+	log_file_fd = buffer_file_fd = NULL;
+
+	log_file_fd = file_open(LOG_PATH, O_WRONLY | O_LARGEFILE, 0777);
+	if (log_file_fd == NULL) {
+		log_file_fd = file_open(LOG_PATH,
+					O_CREAT | O_WRONLY | O_LARGEFILE, 0777);
+	}
 	if (log_file_fd == NULL) {
 		printk(KERN_DEBUG
 		       "fsl-ds-logging: Can not open the log file\n");
@@ -42,7 +48,19 @@ bool start_buffer_capturing(void)
 	}
 
 	buffer_file_fd =
-		file_open(BUFFER_PATH, O_CREAT | O_WRONLY | O_LARGEFILE, 0777);
+		file_open(BUFFER_PATH, O_TRUNC | O_WRONLY | O_LARGEFILE, 0777);
+	if (buffer_file_fd == NULL) {
+		buffer_file_fd = file_open(
+			BUFFER_PATH, O_CREAT | O_TRUNC | O_WRONLY | O_LARGEFILE,
+			0777);
+	} else {
+		truncate_result = vfs_truncate(&(buffer_file_fd->f_path), 0);
+		if (truncate_result != 0) {
+			printk(KERN_DEBUG
+			       "fsl-ds-logging: vfs_truncate failed with %ld",
+			       truncate_result);
+		}
+	}
 	if (buffer_file_fd == NULL) {
 		printk(KERN_DEBUG
 		       "fsl-ds-logging: Can not open the buffer file\n");
@@ -51,41 +69,17 @@ bool start_buffer_capturing(void)
 
 	initialize_syscall_buffer_map();
 
+	printk(KERN_DEBUG "fsl-ds-logging: FSL started buffer capturing\n");
+
 	return true;
-}
-
-bool sync_buffers(void)
-{
-	bool log_result = true, buffer_result = true;
-	if (log_file_fd != NULL) {
-		log_result &= file_sync(log_file_fd);
-		if (!log_result) {
-			printk(KERN_DEBUG
-			       "fsl-ds-logging: file sync for logging failed");
-		}
-	} else {
-		printk(KERN_DEBUG "fsl-ds-logging: logging fd is NULL");
-	}
-
-	if (buffer_file_fd != NULL) {
-		buffer_result &= file_sync(buffer_file_fd);
-		if (!log_result) {
-			printk(KERN_DEBUG
-			       "fsl-ds-logging: file sync for capturing buffer failed");
-		}
-	} else {
-		printk(KERN_DEBUG "fsl-ds-logging: buffer fd is NULL");
-	}
-
-	printk(KERN_DEBUG "fsl-ds-logging: number of read syscalls %ld",
-	       atomic64_read(&syscall_exit_buffer_cnt));
-
-	return buffer_result && log_result;
 }
 
 bool end_buffer_capturing(void)
 {
+	struct hlist_head *head;
+	struct fsl_lttng_pid_hash_node *node;
 	bool log_result = true, buffer_result = true;
+
 	if (log_file_fd != NULL) {
 		log_result &= file_sync(log_file_fd);
 		if (!log_result) {
@@ -101,17 +95,29 @@ bool end_buffer_capturing(void)
 
 	if (buffer_file_fd != NULL) {
 		buffer_result &= file_sync(buffer_file_fd);
-		if (!log_result) {
+		if (!buffer_result) {
 			printk(KERN_DEBUG
 			       "fsl-ds-logging: file sync for capturing buffer failed");
 		}
 		buffer_result &= file_close(buffer_file_fd);
-		printk(KERN_DEBUG "fsl-ds-logging: log file closed with %s",
-		       log_result ? "fail" : "success");
+		printk(KERN_DEBUG "fsl-ds-logging: buffer file closed with %s",
+		       buffer_result ? "fail" : "success");
 	} else {
 		printk(KERN_DEBUG "fsl-ds-logging: buffer fd is NULL");
 	}
 
+	printk(KERN_DEBUG "fsl-ds-logging: number of read syscalls %ld",
+	       atomic64_read(&syscall_exit_buffer_cnt));
+
+	atomic64_set(&syscall_exit_buffer_cnt, 0);
+	atomic64_set(&syscall_record_id, 0);
+	head = &pid_record_id[0];
+	lttng_hlist_for_each_entry(node, head, hlist)
+	{
+		node->record_id = 0;
+	}
+
+        printk(KERN_DEBUG "fsl-ds-logging: FSL stopped buffer capturing\n");
 	return buffer_result && log_result;
 }
 
