@@ -7,6 +7,7 @@
 
 #include <lttng-capture-buffer.h>
 #include <fsl-lttng-syscall-handlers.h>
+#include <linux/string.h>
 
 static struct file *file_open(const char *path, int flags, int rights);
 static int file_close(struct file *file);
@@ -33,7 +34,6 @@ syscall_buffer_handler syscall_buf_handlers[NR_syscalls];
 
 bool start_buffer_capturing(void)
 {
-	long truncate_result = 0;
 	log_file_fd = buffer_file_fd = NULL;
 
 	log_file_fd = file_open(LOG_PATH, O_WRONLY | O_LARGEFILE, 0777);
@@ -47,20 +47,16 @@ bool start_buffer_capturing(void)
 		return false;
 	}
 
-	buffer_file_fd =
-		file_open(BUFFER_PATH, O_TRUNC | O_WRONLY | O_LARGEFILE, 0777);
+	buffer_file_fd = file_open(BUFFER_PATH, O_WRONLY | O_LARGEFILE, 0777);
 	if (buffer_file_fd == NULL) {
 		buffer_file_fd = file_open(
-			BUFFER_PATH, O_CREAT | O_TRUNC | O_WRONLY | O_LARGEFILE,
-			0777);
+			BUFFER_PATH, O_CREAT | O_WRONLY | O_LARGEFILE, 0777);
+		printk(KERN_DEBUG "fsl-ds-logging: created new buffer file");
+
 	} else {
-		truncate_result = vfs_truncate(&(buffer_file_fd->f_path), 0);
-		if (truncate_result != 0) {
-			printk(KERN_DEBUG
-			       "fsl-ds-logging: vfs_truncate failed with %ld",
-			       truncate_result);
-		}
+		printk(KERN_DEBUG "fsl-ds-logging: using existing buffer file");
 	}
+
 	if (buffer_file_fd == NULL) {
 		printk(KERN_DEBUG
 		       "fsl-ds-logging: Can not open the buffer file\n");
@@ -69,7 +65,8 @@ bool start_buffer_capturing(void)
 
 	initialize_syscall_buffer_map();
 
-	printk(KERN_DEBUG "fsl-ds-logging: FSL started buffer capturing\n");
+	printk(KERN_DEBUG
+	       "fsl-ds-logging: fsl-tracepoint started buffer capturing\n");
 
 	return true;
 }
@@ -86,6 +83,7 @@ bool end_buffer_capturing(void)
 			printk(KERN_DEBUG
 			       "fsl-ds-logging: file sync for logging failed");
 		}
+		file_end_write(log_file_fd);
 		log_result &= file_close(log_file_fd);
 		printk(KERN_DEBUG "fsl-ds-logging: log file closed with %s",
 		       log_result ? "fail" : "success");
@@ -99,6 +97,7 @@ bool end_buffer_capturing(void)
 			printk(KERN_DEBUG
 			       "fsl-ds-logging: file sync for capturing buffer failed");
 		}
+		file_end_write(buffer_file_fd);
 		buffer_result &= file_close(buffer_file_fd);
 		printk(KERN_DEBUG "fsl-ds-logging: buffer file closed with %s",
 		       buffer_result ? "fail" : "success");
@@ -109,6 +108,7 @@ bool end_buffer_capturing(void)
 	printk(KERN_DEBUG "fsl-ds-logging: number of read syscalls %ld",
 	       atomic64_read(&syscall_exit_buffer_cnt));
 
+	log_file_offset = buffer_file_offset = 0;
 	atomic64_set(&syscall_exit_buffer_cnt, 0);
 	atomic64_set(&syscall_record_id, 0);
 	head = &pid_record_id[0];
@@ -117,7 +117,8 @@ bool end_buffer_capturing(void)
 		node->record_id = 0;
 	}
 
-        printk(KERN_DEBUG "fsl-ds-logging: FSL stopped buffer capturing\n");
+	printk(KERN_DEBUG
+	       "fsl-ds-logging: fsl-tracepoint stopped buffer capturing\n");
 	return buffer_result && log_result;
 }
 
@@ -232,22 +233,6 @@ static long fsl_pid_record_id_lookup(int pid)
 	return -1;
 }
 
-static struct file *file_open(const char *path, int flags, int rights)
-{
-	struct file *filp = NULL;
-	mm_segment_t oldfs;
-	int err = 0;
-	oldfs = get_fs();
-	set_fs(get_ds());
-	filp = filp_open(path, flags, rights);
-	set_fs(oldfs);
-	if (IS_ERR(filp)) {
-		err = PTR_ERR(filp);
-		return NULL;
-	}
-	return filp;
-}
-
 static bool copy_user_buffer(void *user_addr, unsigned long size,
 			     void *copy_buffer)
 {
@@ -284,6 +269,35 @@ static bool copy_user_buffer(void *user_addr, unsigned long size,
 	return true;
 }
 
+static struct file *file_open(const char *path, int flags, int rights)
+{
+	struct file *filp = NULL;
+	struct kstat stat;
+	mm_segment_t oldfs;
+	int err = 0;
+	oldfs = get_fs();
+	set_fs(get_ds());
+	filp = filp_open(path, flags, rights);
+	vfs_stat(BUFFER_PATH, &stat);
+	set_fs(oldfs);
+	if (IS_ERR(filp)) {
+		err = PTR_ERR(filp);
+		return NULL;
+	}
+	return filp;
+}
+
+static int file_close(struct file *file)
+{
+	int result = 0;
+	mm_segment_t oldfs;
+	oldfs = get_fs();
+	set_fs(get_ds());
+	result = filp_close(file, NULL);
+	set_fs(oldfs);
+	return result;
+}
+
 static int file_write(struct file *file, const char *data, unsigned int size,
 		      loff_t *offset)
 {
@@ -296,13 +310,13 @@ static int file_write(struct file *file, const char *data, unsigned int size,
 	return ret;
 }
 
-static int file_close(struct file *file)
-{
-	return filp_close(file, NULL);
-}
-
 static int file_sync(struct file *file)
 {
-	int bytes_not_synced = vfs_fsync(file, 0);
+	int bytes_not_synced = 0;
+	mm_segment_t oldfs;
+	oldfs = get_fs();
+	set_fs(get_ds());
+	bytes_not_synced = vfs_fsync(file, 0);
+	set_fs(oldfs);
 	return bytes_not_synced == 0;
 }

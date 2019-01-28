@@ -321,8 +321,8 @@ long lttng_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case LTTNG_KERNEL_OLD_WAIT_QUIESCENT:
 	case LTTNG_KERNEL_WAIT_QUIESCENT:
 	{
-        	if (arg == 0) {
-        		if (!isFSLModuleInitialized) {
+		if (arg == 0) {
+			if (!isFSLModuleInitialized) {
 				start_buffer_capturing();
 				isFSLModuleInitialized = true;
 			} else {
