@@ -13,6 +13,8 @@
 void read_syscall_handler(fsl_event_type event, unsigned long *args,
 			  unsigned int nr_args);
 void write_syscall_handler(fsl_event_type event, unsigned long *args,
-			  unsigned int nr_args);
+			   unsigned int nr_args);
+void stat_family_syscall_handler(fsl_event_type event, unsigned long *args,
+				 unsigned int nr_args);
 
 #endif
