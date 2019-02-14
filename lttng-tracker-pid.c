@@ -23,6 +23,7 @@
 #include <lttng-capture-buffer.h>
 
 extern atomic64_t syscall_record_id;
+DEFINE_SPINLOCK(pid_table_lock);
 
 /*
  * Hash table is allocated and freed when there are no possible
@@ -48,20 +49,21 @@ bool lttng_pid_tracker_lookup(struct lttng_pid_tracker *lpf, int pid)
 {
 	struct hlist_head *head;
 	struct lttng_pid_hash_node *e;
+        long record_id;
 	uint32_t hash = hash_32(pid, 32);
 	head = &lpf->pid_hash[hash & (LTTNG_PID_TABLE_SIZE - 1)];
 	lttng_hlist_for_each_entry_rcu(e, head, hlist) {
 		if (pid == e->pid &&
 		    current->tgid == e->pid) {
-			// atomic64_inc(&syscall_record_id);
-			long record_id =
-				atomic64_add_return(1, &syscall_record_id);
+			spin_lock(&pid_table_lock);
+			record_id = atomic64_add_return(1, &syscall_record_id);
 			fsl_pid_record_id_map(current->pid,
 					      record_id);
-			return 1;	/* Found */
+			spin_unlock(&pid_table_lock);
+			return true;	/* Found */
                 }
 	}
-	return 0;
+	return false;
 }
 EXPORT_SYMBOL_GPL(lttng_pid_tracker_lookup);
 
