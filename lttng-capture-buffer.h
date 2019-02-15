@@ -60,5 +60,6 @@ void fsl_pid_record_id_map(int pid, long record_id);
 void fsl_syscall_buffer_handler(long syscall_no, fsl_event_type event,
 				unsigned long *args, unsigned int nr_args);
 void copy_user_buffer_to_file(void *user_buffer, unsigned long size);
+long fsl_pid_record_id_lookup(int pid);
 
 #endif

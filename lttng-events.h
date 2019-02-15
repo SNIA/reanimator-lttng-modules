@@ -715,6 +715,7 @@ int lttng_add_migratable_to_ctx(struct lttng_ctx **ctx)
 #endif
 
 int lttng_add_callstack_to_ctx(struct lttng_ctx **ctx, int type);
+int lttng_add_fsl_record_id_to_ctx(struct lttng_ctx **ctx);
 
 #if defined(CONFIG_PERF_EVENTS) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33))
 int lttng_add_perf_counter_to_ctx(uint32_t type,

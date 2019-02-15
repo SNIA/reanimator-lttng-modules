@@ -201,7 +201,10 @@ long lttng_abi_add_context(struct file *file,
 
 	switch (context_param->ctx) {
 	case LTTNG_KERNEL_CONTEXT_PID:
+	{
+		lttng_add_fsl_record_id_to_ctx(ctx);
 		return lttng_add_pid_to_ctx(ctx);
+	}
 	case LTTNG_KERNEL_CONTEXT_PRIO:
 		return lttng_add_prio_to_ctx(ctx);
 	case LTTNG_KERNEL_CONTEXT_NICE:
@@ -227,7 +230,7 @@ long lttng_abi_add_context(struct file *file,
 	case LTTNG_KERNEL_CONTEXT_HOSTNAME:
 		return lttng_add_hostname_to_ctx(ctx);
 	case LTTNG_KERNEL_CONTEXT_CPU_ID:
-		return lttng_add_cpu_id_to_ctx(ctx);
+	        return lttng_add_cpu_id_to_ctx(ctx);
 	case LTTNG_KERNEL_CONTEXT_INTERRUPTIBLE:
 		return lttng_add_interruptible_to_ctx(ctx);
 	case LTTNG_KERNEL_CONTEXT_NEED_RESCHEDULE:

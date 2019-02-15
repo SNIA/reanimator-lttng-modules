@@ -60,7 +60,8 @@ ifneq ($(KERNELRELEASE),)
                        lttng-filter-validator.o \
                        probes/lttng-probe-user.o \
                        lttng-tp-mempool.o \
-                       lttng-capture-buffer.o fsl-lttng-syscall-handlers.o
+                       lttng-capture-buffer.o fsl-lttng-syscall-handlers.o \
+                       lttng-context-record-id.o
 
   ifneq ($(CONFIG_HAVE_SYSCALL_TRACEPOINTS),)
     lttng-tracer-objs += lttng-syscalls.o

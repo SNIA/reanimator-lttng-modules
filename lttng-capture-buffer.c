@@ -8,8 +8,6 @@
 #include <lttng-capture-buffer.h>
 #include <fsl-lttng-syscall-handlers.h>
 #include <linux/string.h>
-#include <linux/spinlock.h>
-#include <linux/spinlock_types.h>
 
 static struct file *file_open(const char *path, int flags, int rights);
 static int file_close(struct file *file);
@@ -18,15 +16,12 @@ static int file_write(struct file *file, const char *data, unsigned int size,
 		      loff_t *offset);
 static bool copy_user_buffer(void *user_addr, unsigned long size,
 			     void *copy_buffer);
-static long fsl_pid_record_id_lookup(int pid);
 static void initialize_syscall_buffer_map(void);
 
 static struct file *log_file_fd;
 static struct file *buffer_file_fd;
 static loff_t log_file_offset = 0;
 static loff_t buffer_file_offset = 0;
-
-DEFINE_SPINLOCK(write_lock);
 
 struct hlist_head pid_record_id[FSL_LTTNG_PID_TABLE_SIZE];
 
@@ -172,12 +167,10 @@ void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
 	if (copy_user_buffer(user_buffer, size,
 			     (void *)&kernel_buffer->buffer)) {
 		// TODO(Umit) Integrate with new kernel_write
-		spin_lock(&write_lock);
 		do {
 			ret = file_write(buffer_file_fd, (void *)kernel_buffer,
 					 total_size, &buffer_file_offset);
 		} while (ret < 0);
-		spin_unlock(&write_lock);
 	}
 	kfree(kernel_buffer);
 }
@@ -215,21 +208,7 @@ void fsl_syscall_buffer_handler(long syscall_no, fsl_event_type event,
 	}
 }
 
-static void initialize_syscall_buffer_map(void)
-{
-	bitmap_set(fsl_syscall_buffer_map, __NR_read, 1);
-	syscall_buf_handlers[__NR_read] = &read_syscall_handler;
-	bitmap_set(fsl_syscall_buffer_map, __NR_write, 1);
-	syscall_buf_handlers[__NR_write] = &write_syscall_handler;
-	bitmap_set(fsl_syscall_buffer_map, __NR_fstat, 1);
-	syscall_buf_handlers[__NR_fstat] = &stat_family_syscall_handler;
-	bitmap_set(fsl_syscall_buffer_map, __NR_stat, 1);
-	syscall_buf_handlers[__NR_stat] = &stat_family_syscall_handler;
-	bitmap_set(fsl_syscall_buffer_map, __NR_lstat, 1);
-	syscall_buf_handlers[__NR_lstat] = &stat_family_syscall_handler;
-}
-
-static long fsl_pid_record_id_lookup(int pid)
+long fsl_pid_record_id_lookup(int pid)
 {
 	struct hlist_head *head;
 	struct fsl_lttng_pid_hash_node *node;
@@ -243,6 +222,20 @@ static long fsl_pid_record_id_lookup(int pid)
 		}
 	}
 	return -1;
+}
+
+static void initialize_syscall_buffer_map(void)
+{
+	bitmap_set(fsl_syscall_buffer_map, __NR_read, 1);
+	syscall_buf_handlers[__NR_read] = &read_syscall_handler;
+	bitmap_set(fsl_syscall_buffer_map, __NR_write, 1);
+	syscall_buf_handlers[__NR_write] = &write_syscall_handler;
+	bitmap_set(fsl_syscall_buffer_map, __NR_fstat, 1);
+	syscall_buf_handlers[__NR_fstat] = &stat_family_syscall_handler;
+	bitmap_set(fsl_syscall_buffer_map, __NR_stat, 1);
+	syscall_buf_handlers[__NR_stat] = &stat_family_syscall_handler;
+	bitmap_set(fsl_syscall_buffer_map, __NR_lstat, 1);
+	syscall_buf_handlers[__NR_lstat] = &stat_family_syscall_handler;
 }
 
 static bool copy_user_buffer(void *user_addr, unsigned long size,
