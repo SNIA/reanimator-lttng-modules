@@ -8,6 +8,8 @@
 #include <lttng-capture-buffer.h>
 #include <fsl-lttng-syscall-handlers.h>
 #include <linux/string.h>
+#include <linux/spinlock.h>
+#include <linux/spinlock_types.h>
 
 static struct file *file_open(const char *path, int flags, int rights);
 static int file_close(struct file *file);
@@ -22,6 +24,7 @@ static struct file *log_file_fd;
 static struct file *buffer_file_fd;
 static loff_t log_file_offset = 0;
 static loff_t buffer_file_offset = 0;
+DEFINE_SPINLOCK(write_lock);
 
 struct hlist_head pid_record_id[FSL_LTTNG_PID_TABLE_SIZE];
 
@@ -154,6 +157,7 @@ void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
 {
 	int ret = -1;
 	long total_size = sizeof(struct buffer_header) + size;
+	loff_t write_offset;
 	struct buffer_header *kernel_buffer = (struct buffer_header *)kcalloc(
 		total_size, sizeof(char), GFP_KERNEL);
 
@@ -166,10 +170,14 @@ void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
 	kernel_buffer->sizeOfBuffer = size;
 	if (copy_user_buffer(user_buffer, size,
 			     (void *)&kernel_buffer->buffer)) {
+		spin_lock(&write_lock);
+		write_offset = buffer_file_offset;
+		buffer_file_offset += total_size;
+		spin_unlock(&write_lock);
 		// TODO(Umit) Integrate with new kernel_write
 		do {
 			ret = file_write(buffer_file_fd, (void *)kernel_buffer,
-					 total_size, &buffer_file_offset);
+					 total_size, &write_offset);
 		} while (ret < 0);
 	}
 	kfree(kernel_buffer);
