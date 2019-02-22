@@ -555,6 +555,7 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 	const struct trace_syscall_entry *table, *entry;
 	size_t table_len;
 	long id;
+        fsl_event_type fsl_event = syscall_buffer_exit; 
 
 	id = syscall_get_nr(current, regs);
 	if (unlikely(in_compat_syscall())) {
@@ -571,6 +572,7 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 		table = compat_sc_exit_table;
 		table_len = ARRAY_SIZE(compat_sc_exit_table);
 		unknown_event = chan->compat_sc_exit_unknown;
+                fsl_event = syscall_buffer_compat;
 	} else {
 		struct lttng_syscall_filter *filter;
 
@@ -616,7 +618,7 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 		unsigned long args[1];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-		fsl_syscall_buffer_handler(id, syscall_buffer_exit, args, entry->nrargs);
+		fsl_syscall_buffer_handler(id, fsl_event, args, entry->nrargs);
 		fptr(event, ret, args[0]);
 		break;
 	}
@@ -629,7 +631,7 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 		unsigned long args[2];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-		fsl_syscall_buffer_handler(id, syscall_buffer_exit, args, entry->nrargs);
+		fsl_syscall_buffer_handler(id, fsl_event, args, entry->nrargs);
 		fptr(event, ret, args[0], args[1]);
 		break;
 	}
@@ -647,7 +649,7 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 			if ((atomic64_read(&syscall_exit_buffer_cnt) % 100000) == 0)
 				printk(KERN_DEBUG "fsl-ds-capture: syscall read exit");
 		}
-		fsl_syscall_buffer_handler(id, syscall_buffer_exit, args, entry->nrargs);
+		fsl_syscall_buffer_handler(id, fsl_event, args, entry->nrargs);
 		fptr(event, ret, args[0], args[1], args[2]);
 		break;
 	}
@@ -662,7 +664,7 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 		unsigned long args[4];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-		fsl_syscall_buffer_handler(id, syscall_buffer_exit, args, entry->nrargs);
+		fsl_syscall_buffer_handler(id, fsl_event, args, entry->nrargs);
 		fptr(event, ret, args[0], args[1], args[2], args[3]);
 		break;
 	}
@@ -678,7 +680,7 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 		unsigned long args[5];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-		fsl_syscall_buffer_handler(id, syscall_buffer_exit, args, entry->nrargs);
+		fsl_syscall_buffer_handler(id, fsl_event, args, entry->nrargs);
 		fptr(event, ret, args[0], args[1], args[2], args[3], args[4]);
 		break;
 	}
@@ -695,7 +697,7 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 		unsigned long args[6];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-		fsl_syscall_buffer_handler(id, syscall_buffer_exit, args, entry->nrargs);
+		fsl_syscall_buffer_handler(id, fsl_event, args, entry->nrargs);
 		fptr(event, ret, args[0], args[1], args[2],
 			args[3], args[4], args[5]);
 		break;

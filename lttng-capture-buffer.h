@@ -43,7 +43,11 @@ struct fsl_lttng_pid_hash_node {
 	long record_id;
 };
 
-enum fsl_syscall_event { syscall_buffer_enter, syscall_buffer_exit };
+enum fsl_syscall_event {
+	syscall_buffer_enter,
+	syscall_buffer_exit,
+	syscall_buffer_compat
+};
 
 typedef enum fsl_syscall_event fsl_event_type;
 

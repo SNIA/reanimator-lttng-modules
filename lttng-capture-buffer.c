@@ -20,6 +20,7 @@ static bool copy_user_buffer(void *user_addr, unsigned long size,
 			     void *copy_buffer);
 static void initialize_syscall_buffer_map(void);
 
+static bool buffer_capturing_online = false;
 static struct file *log_file_fd;
 static struct file *buffer_file_fd;
 static loff_t log_file_offset = 0;
@@ -67,6 +68,8 @@ bool start_buffer_capturing(void)
 
 	initialize_syscall_buffer_map();
 
+	buffer_capturing_online = true;
+
 	printk(KERN_DEBUG
 	       "fsl-ds-logging: fsl-tracepoint started buffer capturing\n");
 
@@ -78,6 +81,8 @@ bool end_buffer_capturing(void)
 	struct hlist_head *head;
 	struct fsl_lttng_pid_hash_node *node;
 	bool log_result = true, buffer_result = true;
+
+	buffer_capturing_online = false;
 
 	if (log_file_fd != NULL) {
 		log_result &= file_sync(log_file_fd);
@@ -107,7 +112,7 @@ bool end_buffer_capturing(void)
 		printk(KERN_DEBUG "fsl-ds-logging: buffer fd is NULL");
 	}
 
-	printk(KERN_DEBUG "fsl-ds-logging: number of read syscalls %ld",
+	printk(KERN_DEBUG "fsl-ds-logging: number of read syscalls %lld",
 	       atomic64_read(&syscall_exit_buffer_cnt));
 
 	log_file_offset = buffer_file_offset = 0;
@@ -161,7 +166,8 @@ void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
 	struct buffer_header *kernel_buffer = (struct buffer_header *)kcalloc(
 		total_size, sizeof(char), GFP_KERNEL);
 
-	if (buffer_file_fd == NULL || kernel_buffer == NULL) {
+	if (buffer_file_fd == NULL || kernel_buffer == NULL
+	    || buffer_capturing_online == false) {
 		return;
 	}
 
@@ -174,7 +180,6 @@ void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
 		write_offset = buffer_file_offset;
 		buffer_file_offset += total_size;
 		spin_unlock(&write_lock);
-		// TODO(Umit) Integrate with new kernel_write
 		do {
 			ret = file_write(buffer_file_fd, (void *)kernel_buffer,
 					 total_size, &write_offset);
@@ -208,6 +213,9 @@ void fsl_pid_record_id_map(int pid, long record_id)
 void fsl_syscall_buffer_handler(long syscall_no, fsl_event_type event,
 				unsigned long *args, unsigned int nr_args)
 {
+	if (event == syscall_buffer_compat) {
+		return;
+	}
 	if (test_bit(syscall_no, fsl_syscall_buffer_map)
 	    && fsl_pid_record_id_lookup(current->pid) != -1) {
 		syscall_buffer_handler handler =
@@ -244,6 +252,14 @@ static void initialize_syscall_buffer_map(void)
 	syscall_buf_handlers[__NR_stat] = &stat_family_syscall_handler;
 	bitmap_set(fsl_syscall_buffer_map, __NR_lstat, 1);
 	syscall_buf_handlers[__NR_lstat] = &stat_family_syscall_handler;
+	bitmap_set(fsl_syscall_buffer_map, __NR_pread64, 1);
+	syscall_buf_handlers[__NR_pread64] = &read_syscall_handler;
+	bitmap_set(fsl_syscall_buffer_map, __NR_pwrite64, 1);
+	syscall_buf_handlers[__NR_pwrite64] = &write_syscall_handler;
+	bitmap_set(fsl_syscall_buffer_map, __NR_statfs, 1);
+	syscall_buf_handlers[__NR_statfs] = &statfs_family_syscall_handler;
+	bitmap_set(fsl_syscall_buffer_map, __NR_fstatfs, 1);
+	syscall_buf_handlers[__NR_fstatfs] = &statfs_family_syscall_handler;
 }
 
 static bool copy_user_buffer(void *user_addr, unsigned long size,
@@ -318,6 +334,10 @@ static int file_write(struct file *file, const char *data, unsigned int size,
 	int ret;
 	oldfs = get_fs();
 	set_fs(get_ds());
+	if (file == NULL || data == NULL || size == 0 || offset == NULL) {
+		set_fs(oldfs);
+		return EBADFD;
+	}
 	ret = vfs_write(file, data, size, offset);
 	set_fs(oldfs);
 	return ret;
