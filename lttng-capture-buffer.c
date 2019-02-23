@@ -11,6 +11,10 @@
 #include <linux/spinlock.h>
 #include <linux/spinlock_types.h>
 
+#define SET_BUFFER_CAPTURE_SYSCALL_HANDLER(syscall, handler)                   \
+	bitmap_set(fsl_syscall_buffer_map, syscall, 1);                        \
+	syscall_buf_handlers[syscall] = &handler;
+
 static struct file *file_open(const char *path, int flags, int rights);
 static int file_close(struct file *file);
 static int file_sync(struct file *file);
@@ -242,24 +246,29 @@ long fsl_pid_record_id_lookup(int pid)
 
 static void initialize_syscall_buffer_map(void)
 {
-	bitmap_set(fsl_syscall_buffer_map, __NR_read, 1);
-	syscall_buf_handlers[__NR_read] = &read_syscall_handler;
-	bitmap_set(fsl_syscall_buffer_map, __NR_write, 1);
-	syscall_buf_handlers[__NR_write] = &write_syscall_handler;
-	bitmap_set(fsl_syscall_buffer_map, __NR_fstat, 1);
-	syscall_buf_handlers[__NR_fstat] = &stat_family_syscall_handler;
-	bitmap_set(fsl_syscall_buffer_map, __NR_stat, 1);
-	syscall_buf_handlers[__NR_stat] = &stat_family_syscall_handler;
-	bitmap_set(fsl_syscall_buffer_map, __NR_lstat, 1);
-	syscall_buf_handlers[__NR_lstat] = &stat_family_syscall_handler;
-	bitmap_set(fsl_syscall_buffer_map, __NR_pread64, 1);
-	syscall_buf_handlers[__NR_pread64] = &read_syscall_handler;
-	bitmap_set(fsl_syscall_buffer_map, __NR_pwrite64, 1);
-	syscall_buf_handlers[__NR_pwrite64] = &write_syscall_handler;
-	bitmap_set(fsl_syscall_buffer_map, __NR_statfs, 1);
-	syscall_buf_handlers[__NR_statfs] = &statfs_family_syscall_handler;
-	bitmap_set(fsl_syscall_buffer_map, __NR_fstatfs, 1);
-	syscall_buf_handlers[__NR_fstatfs] = &statfs_family_syscall_handler;
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_read, read_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_write, write_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_fstat,
+					   stat_family_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_stat,
+					   stat_family_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_lstat,
+					   stat_family_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_pread64, read_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_pwrite64,
+					   write_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_statfs,
+					   statfs_family_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_fstatfs,
+					   statfs_family_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_readlink,
+					   readlink_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_utime, utime_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_utimes, utimes_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_utimensat,
+					   utimensat_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_newfstatat,
+					   newfstatat_syscall_handler);
 }
 
 static bool copy_user_buffer(void *user_addr, unsigned long size,

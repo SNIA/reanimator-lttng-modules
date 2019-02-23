@@ -7,6 +7,7 @@
 
 #include <fsl-lttng-syscall-handlers.h>
 #include <uapi/asm-generic/statfs.h>
+#include <uapi/linux/utime.h>
 
 void read_syscall_handler(fsl_event_type event, unsigned long *args,
 			  unsigned int nr_args)
@@ -35,6 +36,15 @@ void stat_family_syscall_handler(fsl_event_type event, unsigned long *args,
 	copy_user_buffer_to_file((void *)args[1], sizeof(struct stat));
 }
 
+void newfstatat_syscall_handler(fsl_event_type event, unsigned long *args,
+				unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter || (void *)args[2] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[2], sizeof(struct stat));
+}
+
 void statfs_family_syscall_handler(fsl_event_type event, unsigned long *args,
 				   unsigned int nr_args)
 {
@@ -42,4 +52,40 @@ void statfs_family_syscall_handler(fsl_event_type event, unsigned long *args,
 		return;
 	}
 	copy_user_buffer_to_file((void *)args[1], sizeof(struct statfs));
+}
+
+void readlink_syscall_handler(fsl_event_type event, unsigned long *args,
+			      unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[1], args[2]);
+}
+
+void utime_syscall_handler(fsl_event_type event, unsigned long *args,
+			   unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[1], sizeof(struct utimbuf));
+}
+
+void utimes_syscall_handler(fsl_event_type event, unsigned long *args,
+			    unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[1], 2 * sizeof(struct timeval));
+}
+
+void utimensat_syscall_handler(fsl_event_type event, unsigned long *args,
+			       unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter || (void *)args[2] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[2], 2 * sizeof(struct timespec));
 }

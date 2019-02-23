@@ -18,5 +18,15 @@ void stat_family_syscall_handler(fsl_event_type event, unsigned long *args,
 				 unsigned int nr_args);
 void statfs_family_syscall_handler(fsl_event_type event, unsigned long *args,
 				   unsigned int nr_args);
+void readlink_syscall_handler(fsl_event_type event, unsigned long *args,
+			      unsigned int nr_args);
+void utime_syscall_handler(fsl_event_type event, unsigned long *args,
+			   unsigned int nr_args);
+void newfstatat_syscall_handler(fsl_event_type event, unsigned long *args,
+				unsigned int nr_args);
+void utimes_syscall_handler(fsl_event_type event, unsigned long *args,
+			    unsigned int nr_args);
+void utimensat_syscall_handler(fsl_event_type event, unsigned long *args,
+			       unsigned int nr_args);
 
 #endif
