@@ -28,5 +28,11 @@ void utimes_syscall_handler(fsl_event_type event, unsigned long *args,
 			    unsigned int nr_args);
 void utimensat_syscall_handler(fsl_event_type event, unsigned long *args,
 			       unsigned int nr_args);
+void pipe_syscall_handler(fsl_event_type event, unsigned long *args,
+			  unsigned int nr_args);
+void fcntl_syscall_handler(fsl_event_type event, unsigned long *args,
+			   unsigned int nr_args);
+void getdents_syscall_handler(fsl_event_type event, unsigned long *args,
+			      unsigned int nr_args);
 
 #endif

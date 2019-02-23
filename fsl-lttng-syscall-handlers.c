@@ -7,6 +7,7 @@
 
 #include <fsl-lttng-syscall-handlers.h>
 #include <uapi/asm-generic/statfs.h>
+#include <uapi/asm-generic/fcntl.h>
 #include <uapi/linux/utime.h>
 
 void read_syscall_handler(fsl_event_type event, unsigned long *args,
@@ -88,4 +89,33 @@ void utimensat_syscall_handler(fsl_event_type event, unsigned long *args,
 		return;
 	}
 	copy_user_buffer_to_file((void *)args[2], 2 * sizeof(struct timespec));
+}
+
+void pipe_syscall_handler(fsl_event_type event, unsigned long *args,
+			  unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter || (void *)args[0] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[0], 2 * sizeof(int));
+}
+
+void fcntl_syscall_handler(fsl_event_type event, unsigned long *args,
+			   unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter) {
+		return;
+	}
+	if (args[1] == F_SETLK || args[1] == F_SETLKW || args[1] == F_GETLK) {
+		copy_user_buffer_to_file((void *)args[2], sizeof(struct flock));
+	}
+}
+
+void getdents_syscall_handler(fsl_event_type event, unsigned long *args,
+			      unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[1], args[2]);
 }

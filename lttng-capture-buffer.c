@@ -269,6 +269,11 @@ static void initialize_syscall_buffer_map(void)
 					   utimensat_syscall_handler);
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_newfstatat,
 					   newfstatat_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_pipe, pipe_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_pipe2, pipe_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_fcntl, fcntl_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_getdents,
+					   getdents_syscall_handler);
 }
 
 static bool copy_user_buffer(void *user_addr, unsigned long size,
