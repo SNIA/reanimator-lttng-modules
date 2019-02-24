@@ -274,6 +274,22 @@ static void initialize_syscall_buffer_map(void)
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_fcntl, fcntl_syscall_handler);
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_getdents,
 					   getdents_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_setrlimit,
+					   setrlimit_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_getrlimit,
+					   getrlimit_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_setxattr,
+					   xattr_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_lsetxattr,
+					   xattr_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_getxattr,
+					   xattr_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_lgetxattr,
+					   xattr_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_fsetxattr,
+					   xattr_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_fgetxattr,
+					   xattr_syscall_handler);
 }
 
 static bool copy_user_buffer(void *user_addr, unsigned long size,

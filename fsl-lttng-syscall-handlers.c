@@ -119,3 +119,30 @@ void getdents_syscall_handler(fsl_event_type event, unsigned long *args,
 	}
 	copy_user_buffer_to_file((void *)args[1], args[2]);
 }
+
+void setrlimit_syscall_handler(fsl_event_type event, unsigned long *args,
+			       unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[1], sizeof(struct rlimit));
+}
+
+void getrlimit_syscall_handler(fsl_event_type event, unsigned long *args,
+			       unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[1], sizeof(struct rlimit));
+}
+
+void xattr_syscall_handler(fsl_event_type event, unsigned long *args,
+			   unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter || (void *)args[2] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[2], args[3]);
+}

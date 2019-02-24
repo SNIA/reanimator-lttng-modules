@@ -34,5 +34,11 @@ void fcntl_syscall_handler(fsl_event_type event, unsigned long *args,
 			   unsigned int nr_args);
 void getdents_syscall_handler(fsl_event_type event, unsigned long *args,
 			      unsigned int nr_args);
+void setrlimit_syscall_handler(fsl_event_type event, unsigned long *args,
+			       unsigned int nr_args);
+void getrlimit_syscall_handler(fsl_event_type event, unsigned long *args,
+			       unsigned int nr_args);
+void xattr_syscall_handler(fsl_event_type event, unsigned long *args,
+			   unsigned int nr_args);
 
 #endif
