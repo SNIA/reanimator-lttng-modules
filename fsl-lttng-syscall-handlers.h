@@ -40,5 +40,21 @@ void getrlimit_syscall_handler(fsl_event_type event, unsigned long *args,
 			       unsigned int nr_args);
 void xattr_syscall_handler(fsl_event_type event, unsigned long *args,
 			   unsigned int nr_args);
+void listxattr_syscall_handler(fsl_event_type event, unsigned long *args,
+			       unsigned int nr_args);
+void connect_syscall_handler(fsl_event_type event, unsigned long *args,
+			     unsigned int nr_args);
+void bind_syscall_handler(fsl_event_type event, unsigned long *args,
+			  unsigned int nr_args);
+void socketpair_syscall_handler(fsl_event_type event, unsigned long *args,
+				unsigned int nr_args);
+void socketopt_syscall_handler(fsl_event_type event, unsigned long *args,
+			       unsigned int nr_args);
+void recvfrom_syscall_handler(fsl_event_type event, unsigned long *args,
+			      unsigned int nr_args);
+void send_recv_msg_syscall_handler(fsl_event_type event, unsigned long *args,
+				   unsigned int nr_args);
+void sendto_syscall_handler(fsl_event_type event, unsigned long *args,
+			    unsigned int nr_args);
 
 #endif

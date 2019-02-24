@@ -290,6 +290,28 @@ static void initialize_syscall_buffer_map(void)
 					   xattr_syscall_handler);
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_fgetxattr,
 					   xattr_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_listxattr,
+					   listxattr_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_llistxattr,
+					   listxattr_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_flistxattr,
+					   listxattr_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_connect,
+					   connect_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_bind, bind_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_socketpair,
+					   socketpair_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_setsockopt,
+					   socketopt_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_getsockopt,
+					   socketopt_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_recvfrom,
+					   recvfrom_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_recvmsg,
+					   send_recv_msg_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_sendmsg,
+					   send_recv_msg_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_sendto, sendto_syscall_handler);
 }
 
 static bool copy_user_buffer(void *user_addr, unsigned long size,

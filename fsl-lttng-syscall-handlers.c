@@ -9,6 +9,7 @@
 #include <uapi/asm-generic/statfs.h>
 #include <uapi/asm-generic/fcntl.h>
 #include <uapi/linux/utime.h>
+#include <linux/socket.h>
 
 void read_syscall_handler(fsl_event_type event, unsigned long *args,
 			  unsigned int nr_args)
@@ -145,4 +146,77 @@ void xattr_syscall_handler(fsl_event_type event, unsigned long *args,
 		return;
 	}
 	copy_user_buffer_to_file((void *)args[2], args[3]);
+}
+
+void listxattr_syscall_handler(fsl_event_type event, unsigned long *args,
+			       unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[1], args[2]);
+}
+
+void connect_syscall_handler(fsl_event_type event, unsigned long *args,
+			     unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[1], args[2]);
+}
+
+void bind_syscall_handler(fsl_event_type event, unsigned long *args,
+			  unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[1], args[2]);
+}
+
+void socketpair_syscall_handler(fsl_event_type event, unsigned long *args,
+				unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter || (void *)args[3] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[3], 2 * sizeof(int));
+}
+
+void socketopt_syscall_handler(fsl_event_type event, unsigned long *args,
+			       unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter || (void *)args[3] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[3], args[4]);
+}
+
+void recvfrom_syscall_handler(fsl_event_type event, unsigned long *args,
+			      unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[1], args[2]);
+}
+
+void send_recv_msg_syscall_handler(fsl_event_type event, unsigned long *args,
+				   unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[1], sizeof(struct msghdr));
+}
+
+// TODO(Umit): not completed copy sockaddr also
+void sendto_syscall_handler(fsl_event_type event, unsigned long *args,
+			    unsigned int nr_args)
+{
+  	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[1], args[2]);
 }
