@@ -156,10 +156,12 @@ void log_syscall_args(long syscall_no, unsigned long *args,
 	strcat(print_buffer, "\n");
 
 	buffer_length = strlen(print_buffer);
-	do {
-		ret = file_write(log_file_fd, print_buffer, buffer_length,
-				 &log_file_offset);
-	} while (ret < 0);
+	ret = file_write(log_file_fd, print_buffer, buffer_length,
+			 &log_file_offset);
+
+	if (ret < 0) {
+		printk(KERN_ERR "fsl-ds-logging: failed while writing logs\n");
+	}
 }
 
 void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
@@ -184,10 +186,12 @@ void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
 		write_offset = buffer_file_offset;
 		buffer_file_offset += total_size;
 		spin_unlock(&write_lock);
-		do {
-			ret = file_write(buffer_file_fd, (void *)kernel_buffer,
-					 total_size, &write_offset);
-		} while (ret < 0);
+		ret = file_write(buffer_file_fd, (void *)kernel_buffer,
+				 total_size, &write_offset);
+		if (ret < 0) {
+			printk(KERN_ERR
+			       "fsl-ds-logging: failed while writing captured buffers\n");
+		}
 	}
 	kfree(kernel_buffer);
 }
@@ -338,11 +342,12 @@ static bool copy_user_buffer(void *user_addr, unsigned long size,
 		return false;
 	}
 
-	do {
-		ret = __copy_from_user_inatomic(
-			copy_buffer, (__force const char __user *)(user_addr),
-			size);
-	} while (ret != 0);
+	ret = __copy_from_user_inatomic(
+		copy_buffer, (__force const char __user *)(user_addr), size);
+	if (ret < 0) {
+		printk(KERN_ERR
+		       "fsl-ds-logging: failed while copying user buffers\n");
+	}
 
 	pagefault_enable();
 	set_fs(old_fs);
