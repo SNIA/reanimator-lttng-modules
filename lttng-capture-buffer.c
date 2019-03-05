@@ -316,6 +316,7 @@ static void initialize_syscall_buffer_map(void)
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_sendmsg,
 					   send_recv_msg_syscall_handler);
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_sendto, sendto_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_ioctl, ioctl_syscall_handler);
 }
 
 static bool copy_user_buffer(void *user_addr, unsigned long size,

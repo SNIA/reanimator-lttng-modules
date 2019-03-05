@@ -10,6 +10,7 @@
 #include <uapi/asm-generic/fcntl.h>
 #include <uapi/linux/utime.h>
 #include <linux/socket.h>
+#include <uapi/linux/fs.h>
 
 void read_syscall_handler(fsl_event_type event, unsigned long *args,
 			  unsigned int nr_args)
@@ -215,8 +216,20 @@ void send_recv_msg_syscall_handler(fsl_event_type event, unsigned long *args,
 void sendto_syscall_handler(fsl_event_type event, unsigned long *args,
 			    unsigned int nr_args)
 {
-  	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
+	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
 		return;
 	}
 	copy_user_buffer_to_file((void *)args[1], args[2]);
+}
+
+void ioctl_syscall_handler(fsl_event_type event, unsigned long *args,
+			   unsigned int nr_args)
+{
+	if (event == syscall_buffer_enter) {
+		return;
+	}
+
+	if (args[1] == FS_IOC_GETVERSION && (void *)args[2] != NULL) {
+		copy_user_buffer_to_file((void *)args[2], sizeof(int));
+	}
 }
