@@ -15,7 +15,7 @@
 	bitmap_set(fsl_syscall_buffer_map, syscall, 1);                        \
 	syscall_buf_handlers[syscall] = &handler;
 
-#define MAX_KMALLOC_SIZE 512 * 1024
+#define MAX_KMALLOC_SIZE 256 * 1024
 
 static struct file *file_open(const char *path, int flags, int rights);
 static int file_close(struct file *file);
@@ -172,11 +172,19 @@ void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
 	long total_size = sizeof(struct buffer_header) + size;
 	loff_t write_offset;
 	struct buffer_header *kernel_buffer = NULL;
+	bool virtual_kernel_memory_allocation = false;
+
 	if (total_size <= MAX_KMALLOC_SIZE) {
 		kernel_buffer =
 			(struct buffer_header *)kmalloc(total_size, GFP_KERNEL);
+		if (kernel_buffer == NULL) {
+			kernel_buffer =
+				(struct buffer_header *)vmalloc(total_size);
+			virtual_kernel_memory_allocation = true;
+		}
 	} else {
 		kernel_buffer = (struct buffer_header *)vmalloc(total_size);
+		virtual_kernel_memory_allocation = true;
 	}
 
 	if (buffer_file_fd == NULL || kernel_buffer == NULL
@@ -200,7 +208,7 @@ void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
 			       "fsl-ds-logging: failed while writing captured buffers\n");
 		}
 	}
-	if (total_size <= MAX_KMALLOC_SIZE) {
+	if (!virtual_kernel_memory_allocation) {
 		kfree(kernel_buffer);
 	} else {
 		vfree(kernel_buffer);
