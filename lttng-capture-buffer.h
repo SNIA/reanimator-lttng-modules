@@ -65,5 +65,6 @@ void fsl_syscall_buffer_handler(long syscall_no, fsl_event_type event,
 				unsigned long *args, unsigned int nr_args);
 void copy_user_buffer_to_file(void *user_buffer, unsigned long size);
 long fsl_pid_record_id_lookup(int pid);
+bool copy_user_buffer(void *user_addr, unsigned long size, void *copy_buffer);
 
 #endif

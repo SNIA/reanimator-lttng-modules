@@ -58,5 +58,7 @@ void sendto_syscall_handler(fsl_event_type event, unsigned long *args,
 			    unsigned int nr_args);
 void ioctl_syscall_handler(fsl_event_type event, unsigned long *args,
 			   unsigned int nr_args);
+void getsocketopt_syscall_handler(fsl_event_type event, unsigned long *args,
+				  unsigned int nr_args);
 
 #endif

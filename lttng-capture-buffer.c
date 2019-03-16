@@ -10,6 +10,8 @@
 #include <linux/string.h>
 #include <linux/spinlock.h>
 #include <linux/spinlock_types.h>
+#include <linux/vmalloc.h>
+#include <linux/kernel.h>
 
 #define SET_BUFFER_CAPTURE_SYSCALL_HANDLER(syscall, handler)                   \
 	bitmap_set(fsl_syscall_buffer_map, syscall, 1);                        \
@@ -22,8 +24,6 @@ static int file_close(struct file *file);
 static int file_sync(struct file *file);
 static int file_write(struct file *file, const char *data, unsigned int size,
 		      loff_t *offset);
-static bool copy_user_buffer(void *user_addr, unsigned long size,
-			     void *copy_buffer);
 static void initialize_syscall_buffer_map(void);
 
 static bool buffer_capturing_online = false;
@@ -183,6 +183,10 @@ void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
 			virtual_kernel_memory_allocation = true;
 		}
 	} else {
+		if (total_size >= MAX_KMALLOC_SIZE * 1024) {
+			dump_stack();
+			return;
+		}
 		kernel_buffer = (struct buffer_header *)vmalloc(total_size);
 		virtual_kernel_memory_allocation = true;
 	}
@@ -267,6 +271,42 @@ long fsl_pid_record_id_lookup(int pid)
 	return -1;
 }
 
+bool copy_user_buffer(void *user_addr, unsigned long size, void *copy_buffer)
+{
+	mm_segment_t old_fs;
+	unsigned long ret;
+
+	if (user_addr == NULL || copy_buffer == NULL) {
+		printk(KERN_DEBUG
+		       "fsl-ds-logging: could not get user addresses correctly");
+		return false;
+	}
+
+	old_fs = get_fs();
+	set_fs(KERNEL_DS);
+	pagefault_disable();
+
+	if (unlikely(!access_ok(VERIFY_READ,
+				(__force const char __user *)user_addr,
+				size))) {
+		printk(KERN_DEBUG
+		       "fsl-ds-logging: user buffer is not readable");
+		return false;
+	}
+
+	ret = __copy_from_user_inatomic(
+		copy_buffer, (__force const char __user *)(user_addr), size);
+	if (ret < 0) {
+		printk(KERN_ERR
+		       "fsl-ds-logging: failed while copying user buffers\n");
+	}
+
+	pagefault_enable();
+	set_fs(old_fs);
+
+	return true;
+}
+
 static void initialize_syscall_buffer_map(void)
 {
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_read, read_syscall_handler);
@@ -327,7 +367,7 @@ static void initialize_syscall_buffer_map(void)
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_setsockopt,
 					   socketopt_syscall_handler);
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_getsockopt,
-					   socketopt_syscall_handler);
+					   getsocketopt_syscall_handler);
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_recvfrom,
 					   recvfrom_syscall_handler);
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_recvmsg,
@@ -336,43 +376,6 @@ static void initialize_syscall_buffer_map(void)
 					   send_recv_msg_syscall_handler);
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_sendto, sendto_syscall_handler);
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_ioctl, ioctl_syscall_handler);
-}
-
-static bool copy_user_buffer(void *user_addr, unsigned long size,
-			     void *copy_buffer)
-{
-	mm_segment_t old_fs;
-	unsigned long ret;
-
-	if (user_addr == NULL || copy_buffer == NULL) {
-		printk(KERN_DEBUG
-		       "fsl-ds-logging: could not get user addresses correctly");
-		return false;
-	}
-
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
-	pagefault_disable();
-
-	if (unlikely(!access_ok(VERIFY_READ,
-				(__force const char __user *)user_addr,
-				size))) {
-		printk(KERN_DEBUG
-		       "fsl-ds-logging: user buffer is not readable");
-		return false;
-	}
-
-	ret = __copy_from_user_inatomic(
-		copy_buffer, (__force const char __user *)(user_addr), size);
-	if (ret < 0) {
-		printk(KERN_ERR
-		       "fsl-ds-logging: failed while copying user buffers\n");
-	}
-
-	pagefault_enable();
-	set_fs(old_fs);
-
-	return true;
 }
 
 static struct file *file_open(const char *path, int flags, int rights)

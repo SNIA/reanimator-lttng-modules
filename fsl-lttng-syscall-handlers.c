@@ -194,6 +194,18 @@ void socketopt_syscall_handler(fsl_event_type event, unsigned long *args,
 	copy_user_buffer_to_file((void *)args[3], args[4]);
 }
 
+void getsocketopt_syscall_handler(fsl_event_type event, unsigned long *args,
+				  unsigned int nr_args)
+{
+	unsigned long size = 0;
+	if (event == syscall_buffer_enter || (void *)args[3] == NULL) {
+		return;
+	}
+	copy_user_buffer((void *)args[4], sizeof(uint32_t), (void *)&size);
+	args[4] = size;
+	copy_user_buffer_to_file((void *)args[3], args[4]);
+}
+
 void recvfrom_syscall_handler(fsl_event_type event, unsigned long *args,
 			      unsigned int nr_args)
 {
