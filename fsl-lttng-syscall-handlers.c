@@ -8,9 +8,11 @@
 #include <fsl-lttng-syscall-handlers.h>
 #include <uapi/asm-generic/statfs.h>
 #include <uapi/asm-generic/fcntl.h>
+#include <uapi/asm-generic/termios.h>
 #include <uapi/linux/utime.h>
 #include <linux/socket.h>
 #include <uapi/linux/fs.h>
+#include <asm/ioctls.h>
 
 void read_syscall_handler(fsl_event_type event, unsigned long *args,
 			  unsigned int nr_args)
@@ -241,7 +243,34 @@ void ioctl_syscall_handler(fsl_event_type event, unsigned long *args,
 		return;
 	}
 
-	if (args[1] == FS_IOC_GETVERSION && (void *)args[2] != NULL) {
-		copy_user_buffer_to_file((void *)args[2], sizeof(int));
+	switch (args[1]) {
+	case FS_IOC_GETVERSION: {
+		if ((void *)args[2] != NULL) {
+			copy_user_buffer_to_file((void *)args[2], sizeof(int));
+		}
+		break;
+	}
+	case TIOCGPGRP: {
+		if ((void *)args[2] != NULL) {
+			copy_user_buffer_to_file((void *)args[2], sizeof(int));
+		}
+		break;
+	}
+	case TIOCGWINSZ: {
+		if ((void *)args[2] != NULL) {
+			copy_user_buffer_to_file((void *)args[2],
+						 sizeof(struct winsize));
+		}
+		break;
+	}
+	case TCGETS: {
+		if ((void *)args[2] != NULL) {
+			copy_user_buffer_to_file((void *)args[2],
+						 sizeof(struct termios));
+		}
+		break;
+	}
+	default:
+		break;
 	}
 }
