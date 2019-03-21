@@ -20,9 +20,11 @@
 #include <wrapper/list.h>
 #include <lttng-events.h>
 
+#include <linux/sched.h>
 #include <lttng-capture-buffer.h>
 
 extern atomic64_t syscall_record_id;
+bool isFistSyscallAppeared = false;
 
 /*
  * Hash table is allocated and freed when there are no possible
@@ -48,17 +50,21 @@ bool lttng_pid_tracker_lookup(struct lttng_pid_tracker *lpf, int pid)
 {
 	struct hlist_head *head;
 	struct lttng_pid_hash_node *e;
-        long record_id;
+	long record_id;
 	uint32_t hash = hash_32(pid, 32);
 	head = &lpf->pid_hash[hash & (LTTNG_PID_TABLE_SIZE - 1)];
-	lttng_hlist_for_each_entry_rcu(e, head, hlist) {
-		if (pid == e->pid &&
-		    current->tgid == e->pid) {
+	lttng_hlist_for_each_entry_rcu(e, head, hlist)
+	{
+		if (!isFistSyscallAppeared && pid == e->pid
+		    && current->tgid == e->pid) {
+			isFistSyscallAppeared = true;
+		}
+		if (isFistSyscallAppeared && pid == e->pid
+		    && pid_vnr(task_pgrp(current)) == e->pid) {
 			record_id = atomic64_add_return(1, &syscall_record_id);
-			fsl_pid_record_id_map(current->pid,
-					      record_id);
-			return true;	/* Found */
-                }
+			fsl_pid_record_id_map(current->pid, record_id);
+			return true; /* Found */
+		}
 	}
 	return false;
 }
@@ -73,10 +79,11 @@ int lttng_pid_tracker_add(struct lttng_pid_tracker *lpf, int pid)
 	struct lttng_pid_hash_node *e;
 	uint32_t hash = hash_32(pid, 32);
 
-        printk(KERN_DEBUG "fsl-ds-logging: pid added %d\n", pid);
-        atomic64_set(&syscall_record_id, 0);
-        head = &lpf->pid_hash[hash & (LTTNG_PID_TABLE_SIZE - 1)];
-	lttng_hlist_for_each_entry(e, head, hlist) {
+	printk(KERN_DEBUG "fsl-ds-logging: pid added %d\n", pid);
+	atomic64_set(&syscall_record_id, 0);
+	head = &lpf->pid_hash[hash & (LTTNG_PID_TABLE_SIZE - 1)];
+	lttng_hlist_for_each_entry(e, head, hlist)
+	{
 		if (pid == e->pid)
 			return -EEXIST;
 	}
@@ -88,8 +95,7 @@ int lttng_pid_tracker_add(struct lttng_pid_tracker *lpf, int pid)
 	return 0;
 }
 
-static
-void pid_tracker_del_node_rcu(struct lttng_pid_hash_node *e)
+static void pid_tracker_del_node_rcu(struct lttng_pid_hash_node *e)
 {
 	hlist_del_rcu(&e->hlist);
 	/*
@@ -108,8 +114,7 @@ void pid_tracker_del_node_rcu(struct lttng_pid_hash_node *e)
  * This removal is only used on destroy, so it does not need to support
  * concurrent RCU lookups.
  */
-static
-void pid_tracker_del_node(struct lttng_pid_hash_node *e)
+static void pid_tracker_del_node(struct lttng_pid_hash_node *e)
 {
 	hlist_del(&e->hlist);
 	kfree(e);
@@ -126,13 +131,14 @@ int lttng_pid_tracker_del(struct lttng_pid_tracker *lpf, int pid)
 	 * No need of _safe iteration, because we stop traversal as soon
 	 * as we remove the entry.
 	 */
-	lttng_hlist_for_each_entry(e, head, hlist) {
+	lttng_hlist_for_each_entry(e, head, hlist)
+	{
 		if (pid == e->pid) {
 			pid_tracker_del_node_rcu(e);
 			return 0;
 		}
 	}
-	return -ENOENT;	/* Not found */
+	return -ENOENT; /* Not found */
 }
 
 struct lttng_pid_tracker *lttng_pid_tracker_create(void)

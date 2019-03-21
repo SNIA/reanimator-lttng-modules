@@ -37,6 +37,7 @@ struct hlist_head pid_record_id[FSL_LTTNG_PID_TABLE_SIZE];
 
 atomic64_t syscall_record_id = {0};
 extern atomic64_t syscall_exit_buffer_cnt;
+extern bool isFistSyscallAppeared;
 
 DECLARE_BITMAP(fsl_syscall_buffer_map, NR_syscalls);
 syscall_buffer_handler syscall_buf_handlers[NR_syscalls];
@@ -124,6 +125,7 @@ bool end_buffer_capturing(void)
 	log_file_offset = buffer_file_offset = 0;
 	atomic64_set(&syscall_exit_buffer_cnt, 0);
 	atomic64_set(&syscall_record_id, 0);
+	isFistSyscallAppeared = false;
 	head = &pid_record_id[0];
 	lttng_hlist_for_each_entry(node, head, hlist)
 	{
