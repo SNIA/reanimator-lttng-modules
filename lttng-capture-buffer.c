@@ -12,6 +12,14 @@
 #include <linux/spinlock_types.h>
 #include <linux/vmalloc.h>
 #include <linux/kernel.h>
+#include <linux/kthread.h>
+
+struct writing_control_block {
+	void *buffer;
+	loff_t offset;
+	long size;
+	bool vmalloc_allocation;
+};
 
 #define SET_BUFFER_CAPTURE_SYSCALL_HANDLER(syscall, handler)                   \
 	bitmap_set(fsl_syscall_buffer_map, syscall, 1);                        \
@@ -57,7 +65,8 @@ bool start_buffer_capturing(void)
 		return false;
 	}
 
-	buffer_file_fd = file_open(BUFFER_PATH, O_WRONLY | O_LARGEFILE, 0777);
+	buffer_file_fd =
+		file_open(BUFFER_PATH, O_WRONLY | O_APPEND | O_LARGEFILE, 0777);
 	if (buffer_file_fd == NULL) {
 		buffer_file_fd = file_open(
 			BUFFER_PATH, O_CREAT | O_WRONLY | O_LARGEFILE, 0777);
@@ -168,6 +177,28 @@ void log_syscall_args(long syscall_no, unsigned long *args,
 	}
 }
 
+int async_writer_thread(void *writing_cb)
+{
+	struct writing_control_block *cb =
+		(struct writing_control_block *)writing_cb;
+	int ret = 0;
+
+	ret = file_write(buffer_file_fd, cb->buffer, cb->size, &(cb->offset));
+
+	if (ret < 0) {
+		printk(KERN_DEBUG
+		       "fsl-ds-logging: kern async thread failed with %d",
+		       ret);
+	}
+
+	if (!cb->vmalloc_allocation) {
+		kfree(cb->buffer);
+	} else {
+		vfree(cb->buffer);
+	}
+	return 0;
+}
+
 void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
 {
 	int ret = -1;
@@ -175,6 +206,8 @@ void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
 	loff_t write_offset;
 	struct buffer_header *kernel_buffer = NULL;
 	bool virtual_kernel_memory_allocation = false;
+	struct writing_control_block *async_data = NULL;
+	struct task_struct *async_task = NULL;
 
 	if (total_size <= MAX_KMALLOC_SIZE) {
 		kernel_buffer =
@@ -201,19 +234,34 @@ void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
 	atomic64_set(&(kernel_buffer->record_id),
 		     fsl_pid_record_id_lookup(current->pid));
 	kernel_buffer->sizeOfBuffer = size;
-	if (copy_user_buffer(user_buffer, size,
-			     (void *)&kernel_buffer->buffer)) {
+
+	if (size != 0 && copy_user_buffer(user_buffer, size,
+					  (void *)&kernel_buffer->buffer)) {
 		spin_lock(&write_lock);
 		write_offset = buffer_file_offset;
 		buffer_file_offset += total_size;
 		spin_unlock(&write_lock);
+
 		ret = file_write(buffer_file_fd, (void *)kernel_buffer,
 				 total_size, &write_offset);
+
 		if (ret < 0) {
-			printk(KERN_ERR
-			       "fsl-ds-logging: failed while writing captured buffers\n");
+			async_data =
+				kmalloc(sizeof(struct writing_control_block),
+					GFP_KERNEL);
+			async_data->buffer = kernel_buffer;
+			async_data->size = total_size;
+			async_data->offset = write_offset;
+			async_data->vmalloc_allocation =
+				virtual_kernel_memory_allocation;
+			async_task =
+				kthread_create(async_writer_thread, async_data,
+					       "writing_thread");
+			wake_up_process(async_task);
+			return;
 		}
 	}
+
 	if (!virtual_kernel_memory_allocation) {
 		kfree(kernel_buffer);
 	} else {
@@ -244,7 +292,8 @@ void fsl_pid_record_id_map(int pid, long record_id)
 }
 
 void fsl_syscall_buffer_handler(long syscall_no, fsl_event_type event,
-				unsigned long *args, unsigned int nr_args)
+				unsigned long *args, unsigned int nr_args,
+				long ret)
 {
 	if (event == syscall_buffer_compat) {
 		return;
@@ -253,7 +302,7 @@ void fsl_syscall_buffer_handler(long syscall_no, fsl_event_type event,
 	    && fsl_pid_record_id_lookup(current->pid) != -1) {
 		syscall_buffer_handler handler =
 			syscall_buf_handlers[syscall_no];
-		handler(event, args, nr_args);
+		handler(event, args, nr_args, ret);
 	}
 }
 
@@ -277,10 +326,17 @@ bool copy_user_buffer(void *user_addr, unsigned long size, void *copy_buffer)
 {
 	mm_segment_t old_fs;
 	unsigned long ret;
+	int offset = 0;
+	unsigned long copied_size = size;
+	int fail_limit = 10;
 
 	if (user_addr == NULL || copy_buffer == NULL) {
 		printk(KERN_DEBUG
 		       "fsl-ds-logging: could not get user addresses correctly");
+		return false;
+	}
+
+	if (size == 0) {
 		return false;
 	}
 
@@ -296,12 +352,15 @@ bool copy_user_buffer(void *user_addr, unsigned long size, void *copy_buffer)
 		return false;
 	}
 
-	ret = __copy_from_user_inatomic(
-		copy_buffer, (__force const char __user *)(user_addr), size);
-	if (ret < 0) {
-		printk(KERN_ERR
-		       "fsl-ds-logging: failed while copying user buffers\n");
-	}
+	do {
+		ret = __copy_from_user_inatomic(
+			copy_buffer,
+			(__force const char __user *)(user_addr) + offset,
+			copied_size);
+		offset += ret;
+		copied_size -= ret;
+		fail_limit--;
+	} while (ret != 0 && fail_limit);
 
 	pagefault_enable();
 	set_fs(old_fs);
@@ -418,7 +477,7 @@ static int file_write(struct file *file, const char *data, unsigned int size,
 	set_fs(get_ds());
 	if (file == NULL || data == NULL || size == 0 || offset == NULL) {
 		set_fs(oldfs);
-		return EBADFD;
+		return -EBADFD;
 	}
 	ret = vfs_write(file, data, size, offset);
 	set_fs(oldfs);

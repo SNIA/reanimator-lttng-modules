@@ -53,7 +53,7 @@ typedef enum fsl_syscall_event fsl_event_type;
 
 typedef void (*syscall_buffer_handler)(fsl_event_type event,
 				       unsigned long *args,
-				       unsigned int nr_args);
+				       unsigned int nr_args, long ret);
 
 bool start_buffer_capturing(void);
 bool end_buffer_capturing(void);
@@ -62,7 +62,8 @@ void log_syscall_args(long syscall_no, unsigned long *args,
 		      unsigned int nr_args);
 void fsl_pid_record_id_map(int pid, long record_id);
 void fsl_syscall_buffer_handler(long syscall_no, fsl_event_type event,
-				unsigned long *args, unsigned int nr_args);
+				unsigned long *args, unsigned int nr_args,
+				long ret);
 void copy_user_buffer_to_file(void *user_buffer, unsigned long size);
 long fsl_pid_record_id_lookup(int pid);
 bool copy_user_buffer(void *user_addr, unsigned long size, void *copy_buffer);

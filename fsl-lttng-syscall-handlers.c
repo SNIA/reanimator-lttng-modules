@@ -15,7 +15,7 @@
 #include <asm/ioctls.h>
 
 void read_syscall_handler(fsl_event_type event, unsigned long *args,
-			  unsigned int nr_args)
+			  unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
 		return;
@@ -24,7 +24,7 @@ void read_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void write_syscall_handler(fsl_event_type event, unsigned long *args,
-			   unsigned int nr_args)
+			   unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
 		return;
@@ -33,7 +33,7 @@ void write_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void stat_family_syscall_handler(fsl_event_type event, unsigned long *args,
-				 unsigned int nr_args)
+				 unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
 		return;
@@ -42,7 +42,7 @@ void stat_family_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void newfstatat_syscall_handler(fsl_event_type event, unsigned long *args,
-				unsigned int nr_args)
+				unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[2] == NULL) {
 		return;
@@ -51,7 +51,7 @@ void newfstatat_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void statfs_family_syscall_handler(fsl_event_type event, unsigned long *args,
-				   unsigned int nr_args)
+				   unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
 		return;
@@ -60,7 +60,7 @@ void statfs_family_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void readlink_syscall_handler(fsl_event_type event, unsigned long *args,
-			      unsigned int nr_args)
+			      unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
 		return;
@@ -69,7 +69,7 @@ void readlink_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void utime_syscall_handler(fsl_event_type event, unsigned long *args,
-			   unsigned int nr_args)
+			   unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
 		return;
@@ -78,7 +78,7 @@ void utime_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void utimes_syscall_handler(fsl_event_type event, unsigned long *args,
-			    unsigned int nr_args)
+			    unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
 		return;
@@ -87,7 +87,7 @@ void utimes_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void utimensat_syscall_handler(fsl_event_type event, unsigned long *args,
-			       unsigned int nr_args)
+			       unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[2] == NULL) {
 		return;
@@ -96,7 +96,7 @@ void utimensat_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void pipe_syscall_handler(fsl_event_type event, unsigned long *args,
-			  unsigned int nr_args)
+			  unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[0] == NULL) {
 		return;
@@ -105,7 +105,7 @@ void pipe_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void fcntl_syscall_handler(fsl_event_type event, unsigned long *args,
-			   unsigned int nr_args)
+			   unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter) {
 		return;
@@ -116,16 +116,16 @@ void fcntl_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void getdents_syscall_handler(fsl_event_type event, unsigned long *args,
-			      unsigned int nr_args)
+			      unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
 		return;
 	}
-	copy_user_buffer_to_file((void *)args[1], args[2]);
+	copy_user_buffer_to_file((void *)args[1], ret);
 }
 
 void setrlimit_syscall_handler(fsl_event_type event, unsigned long *args,
-			       unsigned int nr_args)
+			       unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
 		return;
@@ -134,7 +134,7 @@ void setrlimit_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void getrlimit_syscall_handler(fsl_event_type event, unsigned long *args,
-			       unsigned int nr_args)
+			       unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
 		return;
@@ -143,25 +143,25 @@ void getrlimit_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void xattr_syscall_handler(fsl_event_type event, unsigned long *args,
-			   unsigned int nr_args)
+			   unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[2] == NULL) {
 		return;
 	}
-	copy_user_buffer_to_file((void *)args[2], args[3]);
+	// copy_user_buffer_to_file((void *)args[2], args[3]);
 }
 
 void listxattr_syscall_handler(fsl_event_type event, unsigned long *args,
-			       unsigned int nr_args)
+			       unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
 		return;
 	}
-	copy_user_buffer_to_file((void *)args[1], args[2]);
+	// copy_user_buffer_to_file((void *)args[1], args[2]);
 }
 
 void connect_syscall_handler(fsl_event_type event, unsigned long *args,
-			     unsigned int nr_args)
+			     unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
 		return;
@@ -170,7 +170,7 @@ void connect_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void bind_syscall_handler(fsl_event_type event, unsigned long *args,
-			  unsigned int nr_args)
+			  unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
 		return;
@@ -179,7 +179,7 @@ void bind_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void socketpair_syscall_handler(fsl_event_type event, unsigned long *args,
-				unsigned int nr_args)
+				unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[3] == NULL) {
 		return;
@@ -188,7 +188,7 @@ void socketpair_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void socketopt_syscall_handler(fsl_event_type event, unsigned long *args,
-			       unsigned int nr_args)
+			       unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[3] == NULL) {
 		return;
@@ -197,7 +197,7 @@ void socketopt_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void getsocketopt_syscall_handler(fsl_event_type event, unsigned long *args,
-				  unsigned int nr_args)
+				  unsigned int nr_args, long ret)
 {
 	unsigned long size = 0;
 	if (event == syscall_buffer_enter || (void *)args[3] == NULL) {
@@ -209,7 +209,7 @@ void getsocketopt_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void recvfrom_syscall_handler(fsl_event_type event, unsigned long *args,
-			      unsigned int nr_args)
+			      unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
 		return;
@@ -218,7 +218,7 @@ void recvfrom_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void send_recv_msg_syscall_handler(fsl_event_type event, unsigned long *args,
-				   unsigned int nr_args)
+				   unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
 		return;
@@ -228,7 +228,7 @@ void send_recv_msg_syscall_handler(fsl_event_type event, unsigned long *args,
 
 // TODO(Umit): not completed copy sockaddr also
 void sendto_syscall_handler(fsl_event_type event, unsigned long *args,
-			    unsigned int nr_args)
+			    unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
 		return;
@@ -237,7 +237,7 @@ void sendto_syscall_handler(fsl_event_type event, unsigned long *args,
 }
 
 void ioctl_syscall_handler(fsl_event_type event, unsigned long *args,
-			   unsigned int nr_args)
+			   unsigned int nr_args, long ret)
 {
 	if (event == syscall_buffer_enter) {
 		return;

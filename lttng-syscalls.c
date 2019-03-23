@@ -618,7 +618,7 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 		unsigned long args[1];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-		fsl_syscall_buffer_handler(id, fsl_event, args, entry->nrargs);
+		fsl_syscall_buffer_handler(id, fsl_event, args, entry->nrargs, ret);
 		fptr(event, ret, args[0]);
 		break;
 	}
@@ -631,7 +631,7 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 		unsigned long args[2];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-		fsl_syscall_buffer_handler(id, fsl_event, args, entry->nrargs);
+		fsl_syscall_buffer_handler(id, fsl_event, args, entry->nrargs, ret);
 		fptr(event, ret, args[0], args[1]);
 		break;
 	}
@@ -649,7 +649,7 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 			if ((atomic64_read(&syscall_exit_buffer_cnt) % 100000) == 0)
 				printk(KERN_DEBUG "fsl-ds-capture: syscall read exit");
 		}
-		fsl_syscall_buffer_handler(id, fsl_event, args, entry->nrargs);
+		fsl_syscall_buffer_handler(id, fsl_event, args, entry->nrargs, ret);
 		fptr(event, ret, args[0], args[1], args[2]);
 		break;
 	}
@@ -664,7 +664,7 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 		unsigned long args[4];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-		fsl_syscall_buffer_handler(id, fsl_event, args, entry->nrargs);
+		fsl_syscall_buffer_handler(id, fsl_event, args, entry->nrargs, ret);
 		fptr(event, ret, args[0], args[1], args[2], args[3]);
 		break;
 	}
@@ -680,7 +680,7 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 		unsigned long args[5];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-		fsl_syscall_buffer_handler(id, fsl_event, args, entry->nrargs);
+		fsl_syscall_buffer_handler(id, fsl_event, args, entry->nrargs, ret);
 		fptr(event, ret, args[0], args[1], args[2], args[3], args[4]);
 		break;
 	}
@@ -697,7 +697,7 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 		unsigned long args[6];
 
 		syscall_get_arguments(current, regs, 0, entry->nrargs, args);
-		fsl_syscall_buffer_handler(id, fsl_event, args, entry->nrargs);
+		fsl_syscall_buffer_handler(id, fsl_event, args, entry->nrargs, ret);
 		fptr(event, ret, args[0], args[1], args[2],
 			args[3], args[4], args[5]);
 		break;
