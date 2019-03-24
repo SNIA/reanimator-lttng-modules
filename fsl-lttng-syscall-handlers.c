@@ -148,7 +148,7 @@ void xattr_syscall_handler(fsl_event_type event, unsigned long *args,
 	if (event == syscall_buffer_enter || (void *)args[2] == NULL) {
 		return;
 	}
-	// copy_user_buffer_to_file((void *)args[2], args[3]);
+	copy_user_buffer_to_file((void *)args[2], args[3]);
 }
 
 void listxattr_syscall_handler(fsl_event_type event, unsigned long *args,
@@ -157,7 +157,7 @@ void listxattr_syscall_handler(fsl_event_type event, unsigned long *args,
 	if (event == syscall_buffer_enter || (void *)args[1] == NULL) {
 		return;
 	}
-	// copy_user_buffer_to_file((void *)args[1], args[2]);
+	copy_user_buffer_to_file((void *)args[1], args[2]);
 }
 
 void connect_syscall_handler(fsl_event_type event, unsigned long *args,
@@ -236,6 +236,33 @@ void sendto_syscall_handler(fsl_event_type event, unsigned long *args,
 	copy_user_buffer_to_file((void *)args[1], args[2]);
 }
 
+void accept_syscall_handler(fsl_event_type event, unsigned long *args,
+			    unsigned int nr_args, long ret)
+{
+	if (event == syscall_buffer_enter || (void *)args[2] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[2], sizeof(int));
+}
+
+void getsockname_syscall_handler(fsl_event_type event, unsigned long *args,
+				 unsigned int nr_args, long ret)
+{
+	if (event == syscall_buffer_enter || (void *)args[2] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[2], sizeof(int));
+}
+
+void getpeername_syscall_handler(fsl_event_type event, unsigned long *args,
+				 unsigned int nr_args, long ret)
+{
+	if (event == syscall_buffer_enter || (void *)args[2] == NULL) {
+		return;
+	}
+	copy_user_buffer_to_file((void *)args[2], sizeof(int));
+}
+
 void ioctl_syscall_handler(fsl_event_type event, unsigned long *args,
 			   unsigned int nr_args, long ret)
 {
@@ -267,6 +294,12 @@ void ioctl_syscall_handler(fsl_event_type event, unsigned long *args,
 		if ((void *)args[2] != NULL) {
 			copy_user_buffer_to_file((void *)args[2],
 						 sizeof(struct termios));
+		}
+		break;
+	}
+	case TIOCINQ: {
+		if ((void *)args[2] != NULL) {
+			copy_user_buffer_to_file((void *)args[2], sizeof(int));
 		}
 		break;
 	}

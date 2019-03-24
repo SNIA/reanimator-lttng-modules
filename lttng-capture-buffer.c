@@ -437,6 +437,11 @@ static void initialize_syscall_buffer_map(void)
 					   send_recv_msg_syscall_handler);
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_sendto, sendto_syscall_handler);
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_ioctl, ioctl_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_accept, accept_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_getsockname,
+					   getsockname_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_getpeername,
+					   getpeername_syscall_handler);
 }
 
 static struct file *file_open(const char *path, int flags, int rights)

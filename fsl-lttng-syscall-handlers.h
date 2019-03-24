@@ -60,5 +60,11 @@ void ioctl_syscall_handler(fsl_event_type event, unsigned long *args,
 			   unsigned int nr_args, long ret);
 void getsocketopt_syscall_handler(fsl_event_type event, unsigned long *args,
 				  unsigned int nr_args, long ret);
+void accept_syscall_handler(fsl_event_type event, unsigned long *args,
+			    unsigned int nr_args, long ret);
+void getsockname_syscall_handler(fsl_event_type event, unsigned long *args,
+				 unsigned int nr_args, long ret);
+void getpeername_syscall_handler(fsl_event_type event, unsigned long *args,
+				 unsigned int nr_args, long ret);
 
 #endif
