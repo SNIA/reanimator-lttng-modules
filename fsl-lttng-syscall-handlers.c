@@ -110,8 +110,16 @@ void fcntl_syscall_handler(fsl_event_type event, unsigned long *args,
 	if (event == syscall_buffer_enter) {
 		return;
 	}
-	if (args[1] == F_SETLK || args[1] == F_SETLKW || args[1] == F_GETLK) {
+
+	switch (args[1]) {
+	case F_SETLK:
+	case F_SETLKW:
+	case F_GETLK: {
 		copy_user_buffer_to_file((void *)args[2], sizeof(struct flock));
+		break;
+	}
+	default:
+		break;
 	}
 }
 
