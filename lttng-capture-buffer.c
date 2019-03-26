@@ -87,8 +87,9 @@ bool start_buffer_capturing(void)
 
 	initialize_syscall_buffer_map();
 
-	async_writing_wq = alloc_workqueue("lttng-buffer-capture-wq",
-					   WQ_MEM_RECLAIM | WQ_FREEZABLE, 16);
+	async_writing_wq =
+		alloc_workqueue("lttng-buffer-capture-wq",
+				WQ_MEM_RECLAIM | WQ_UNBOUND | WQ_FREEZABLE, 128);
 
 	buffer_capturing_online = true;
 
