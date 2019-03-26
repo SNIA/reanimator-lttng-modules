@@ -13,13 +13,16 @@
 #include <linux/vmalloc.h>
 #include <linux/kernel.h>
 #include <linux/kthread.h>
+#include <linux/workqueue.h>
 
 struct writing_control_block {
+	struct work_struct work;
 	void *buffer;
 	loff_t offset;
 	long size;
 	bool vmalloc_allocation;
 };
+static struct workqueue_struct *async_writing_wq;
 
 #define SET_BUFFER_CAPTURE_SYSCALL_HANDLER(syscall, handler)                   \
 	bitmap_set(fsl_syscall_buffer_map, syscall, 1);                        \
@@ -84,6 +87,9 @@ bool start_buffer_capturing(void)
 
 	initialize_syscall_buffer_map();
 
+	async_writing_wq = alloc_workqueue("lttng-buffer-capture-wq",
+					   WQ_MEM_RECLAIM | WQ_FREEZABLE, 16);
+
 	buffer_capturing_online = true;
 
 	printk(KERN_DEBUG
@@ -131,6 +137,8 @@ bool end_buffer_capturing(void)
 	printk(KERN_DEBUG "fsl-ds-logging: number of read syscalls %lld",
 	       atomic64_read(&syscall_exit_buffer_cnt));
 
+	flush_workqueue(async_writing_wq);
+	destroy_workqueue(async_writing_wq);
 	log_file_offset = buffer_file_offset = 0;
 	atomic64_set(&syscall_exit_buffer_cnt, 0);
 	atomic64_set(&syscall_record_id, 0);
@@ -177,7 +185,7 @@ void log_syscall_args(long syscall_no, unsigned long *args,
 	}
 }
 
-int async_writer_thread(void *writing_cb)
+static void async_writer_thread(struct work_struct *writing_cb)
 {
 	struct writing_control_block *cb =
 		(struct writing_control_block *)writing_cb;
@@ -196,18 +204,15 @@ int async_writer_thread(void *writing_cb)
 	} else {
 		vfree(cb->buffer);
 	}
-	return 0;
 }
 
 void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
 {
-	int ret = -1;
 	long total_size = sizeof(struct buffer_header) + size;
 	loff_t write_offset;
 	struct buffer_header *kernel_buffer = NULL;
 	bool virtual_kernel_memory_allocation = false;
-	struct writing_control_block *async_data = NULL;
-	struct task_struct *async_task = NULL;
+	struct writing_control_block *async_work = NULL;
 
 	if (total_size <= MAX_KMALLOC_SIZE) {
 		kernel_buffer =
@@ -242,24 +247,17 @@ void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
 		buffer_file_offset += total_size;
 		spin_unlock(&write_lock);
 
-		ret = file_write(buffer_file_fd, (void *)kernel_buffer,
-				 total_size, &write_offset);
-
-		if (ret < 0) {
-			async_data =
-				kmalloc(sizeof(struct writing_control_block),
-					GFP_KERNEL);
-			async_data->buffer = kernel_buffer;
-			async_data->size = total_size;
-			async_data->offset = write_offset;
-			async_data->vmalloc_allocation =
-				virtual_kernel_memory_allocation;
-			async_task =
-				kthread_create(async_writer_thread, async_data,
-					       "writing_thread");
-			wake_up_process(async_task);
-			return;
-		}
+		async_work = kmalloc(sizeof(struct writing_control_block),
+				     GFP_KERNEL);
+		INIT_WORK((struct work_struct *)async_work,
+			  async_writer_thread);
+		async_work->buffer = kernel_buffer;
+		async_work->size = total_size;
+		async_work->offset = write_offset;
+		async_work->vmalloc_allocation =
+			virtual_kernel_memory_allocation;
+		queue_work(async_writing_wq, (struct work_struct *)async_work);
+		return;
 	}
 
 	if (!virtual_kernel_memory_allocation) {
