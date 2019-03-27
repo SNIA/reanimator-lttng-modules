@@ -206,7 +206,7 @@ static void async_writer_thread(struct work_struct *writing_cb)
 		vfree(cb->buffer);
 	}
 
-	kfree(writing_cb);
+	kfree(cb);
 }
 
 void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
