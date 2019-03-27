@@ -87,9 +87,9 @@ bool start_buffer_capturing(void)
 
 	initialize_syscall_buffer_map();
 
-	async_writing_wq =
-		alloc_workqueue("lttng-buffer-capture-wq",
-				WQ_MEM_RECLAIM | WQ_UNBOUND | WQ_FREEZABLE, 128);
+	async_writing_wq = alloc_workqueue(
+		"lttng-buffer-capture-wq",
+		WQ_MEM_RECLAIM | WQ_UNBOUND | WQ_FREEZABLE, 128);
 
 	buffer_capturing_online = true;
 
@@ -205,6 +205,8 @@ static void async_writer_thread(struct work_struct *writing_cb)
 	} else {
 		vfree(cb->buffer);
 	}
+
+	kfree(writing_cb);
 }
 
 void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
