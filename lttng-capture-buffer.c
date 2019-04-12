@@ -87,9 +87,9 @@ bool start_buffer_capturing(void)
 
 	initialize_syscall_buffer_map();
 
-	async_writing_wq = alloc_workqueue(
-		"lttng-buffer-capture-wq",
-		WQ_MEM_RECLAIM | WQ_UNBOUND | WQ_FREEZABLE, 32);
+	async_writing_wq =
+		alloc_workqueue("lttng-buffer-capture-wq",
+				WQ_MEM_RECLAIM | WQ_UNBOUND | WQ_FREEZABLE, 32);
 
 	buffer_capturing_online = true;
 
@@ -439,6 +439,8 @@ static void initialize_syscall_buffer_map(void)
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_sendto, sendto_syscall_handler);
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_ioctl, ioctl_syscall_handler);
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_accept, accept_syscall_handler);
+	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_accept4,
+					   accept_syscall_handler);
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_getsockname,
 					   getsockname_syscall_handler);
 	SET_BUFFER_CAPTURE_SYSCALL_HANDLER(__NR_getpeername,
