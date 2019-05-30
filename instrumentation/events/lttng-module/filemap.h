@@ -2,8 +2,8 @@
 #undef TRACE_SYSTEM
 #define TRACE_SYSTEM filemap
 
-#if !defined(_TRACE_FILEMAP_H) || defined(TRACE_HEADER_MULTI_READ)
-#define _TRACE_FILEMAP_H
+#if !defined(LTTNG_TRACE_FILEMAP_H) || defined(TRACE_HEADER_MULTI_READ)
+#define LTTNG_TRACE_FILEMAP_H
 
 #include <probes/lttng-tracepoint-event.h>
 #include <linux/types.h>
@@ -28,19 +28,19 @@ LTTNG_TRACEPOINT_EVENT_CLASS(mm_filemap_op_page_cache,
                             page->mapping->host->i_sb->s_dev :
                             page->mapping->host->i_rdev)
 	)
-);
+)
 
 LTTNG_TRACEPOINT_EVENT_INSTANCE(mm_filemap_op_page_cache, mm_filemap_delete_from_page_cache,
 	TP_PROTO(struct page *page),
 	TP_ARGS(page)
-	);
+	)
 
 LTTNG_TRACEPOINT_EVENT_INSTANCE(mm_filemap_op_page_cache, mm_filemap_add_to_page_cache,
 	TP_PROTO(struct page *page),
 	TP_ARGS(page)
-	);
+	)
 
-#endif /* _TRACE_FILEMAP_H */
+#endif /* LTTNG_TRACE_FILEMAP_H */
 
 /* This part must be outside protection */
-#include <trace/define_trace.h>
+#include <probes/define_trace.h>
