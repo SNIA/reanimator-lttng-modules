@@ -8,6 +8,7 @@
 #include <linux/uaccess.h>
 #include <linux/module.h>
 #include <probes/lttng-probe-user.h>
+#include <linux/fs.h>
 
 /*
  * Calculate string length. Include final null terminating character if there is
@@ -19,10 +20,11 @@ long lttng_strlen_user_inatomic(const char *addr)
 {
 	long count = 0;
 	mm_segment_t old_fs;
-
+	int retVal = 0;
 	if (!addr)
 		return 0;
 
+	retVal = strnlen_user((__force const char __user *) addr, 255);
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
 	pagefault_disable();
