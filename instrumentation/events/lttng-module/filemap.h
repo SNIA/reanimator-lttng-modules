@@ -31,6 +31,26 @@ LTTNG_TRACEPOINT_EVENT_CLASS(
                   )
 )
 
+LTTNG_TRACEPOINT_EVENT_CLASS(
+	mm_filemap_op_fsl,
+
+	TP_PROTO(struct page *page, struct file* file),
+
+	TP_ARGS(page, file),
+
+	TP_FIELDS(
+		ctf_integer(unsigned long, pfn, page_to_pfn(page))
+		ctf_integer(unsigned long, i_ino, page->mapping->host->i_ino)
+		ctf_integer(unsigned long, index, page->index)
+		ctf_integer(dev_t, s_dev, page->mapping->host->i_sb
+					    ? page->mapping->host->i_sb->s_dev
+					    : page->mapping->host->i_rdev)
+		/* ctf_string(char *, filename, kmalloc(255, GFP_KERNEL); */
+		/* 		dentry_path_raw(file->f_path.dentry,__entry->filename,255)) */
+                  )
+)
+
+
 LTTNG_TRACEPOINT_EVENT_INSTANCE(mm_filemap_op_page_cache,
 				mm_filemap_delete_from_page_cache,
 				TP_PROTO(struct page *page),
@@ -43,6 +63,11 @@ LTTNG_TRACEPOINT_EVENT_INSTANCE(mm_filemap_op_page_cache,
 				TP_ARGS(page)
 )
 
+LTTNG_TRACEPOINT_EVENT_INSTANCE(mm_filemap_op_fsl,
+				mm_filemap_fsl_read,
+				TP_PROTO(struct page *page, struct file* file),
+				TP_ARGS(page, file)
+)
 
 LTTNG_TRACEPOINT_EVENT(
 	filemap_set_wb_err,
