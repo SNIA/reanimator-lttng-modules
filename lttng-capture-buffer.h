@@ -55,6 +55,10 @@ typedef void (*syscall_buffer_handler)(fsl_event_type event,
 				       unsigned long *args,
 				       unsigned int nr_args, long ret);
 
+typedef bool (*copy_buffer_fptr)(void *user_addr, unsigned long size,
+				 void *copy_buffer);
+
+
 bool start_buffer_capturing(void);
 bool end_buffer_capturing(void);
 

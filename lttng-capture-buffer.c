@@ -209,7 +209,8 @@ static void async_writer_thread(struct work_struct *writing_cb)
 	kfree(cb);
 }
 
-void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
+void copy_buffer_core(void *user_buffer, unsigned long size,
+		      copy_buffer_fptr fptr)
 {
 	long total_size = sizeof(struct buffer_header) + size;
 	loff_t write_offset;
@@ -243,8 +244,8 @@ void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
 		     fsl_pid_record_id_lookup(current->pid));
 	kernel_buffer->sizeOfBuffer = size;
 
-	if (size != 0 && copy_user_buffer(user_buffer, size,
-					  (void *)&kernel_buffer->buffer)) {
+	if (size != 0
+	    && fptr(user_buffer, size, (void *)&kernel_buffer->buffer)) {
 		spin_lock(&write_lock);
 		write_offset = buffer_file_offset;
 		buffer_file_offset += total_size;
@@ -268,6 +269,11 @@ void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
 	} else {
 		vfree(kernel_buffer);
 	}
+}
+
+void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
+{
+	copy_buffer_core(user_buffer, size, &copy_user_buffer);
 }
 
 void fsl_pid_record_id_map(int pid, long record_id)
