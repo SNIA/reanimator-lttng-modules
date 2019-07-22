@@ -31,12 +31,26 @@ LTTNG_TRACEPOINT_EVENT_CLASS(
                   )
 )
 
-LTTNG_TRACEPOINT_EVENT_CLASS(
+LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
 	mm_filemap_op_fsl,
 
 	TP_PROTO(struct page *page, struct file* file),
 
 	TP_ARGS(page, file),
+
+	TP_locvar(
+            unsigned long pfn;
+            unsigned long i_no;
+            unsigned long index;
+            dev_t s_dev;
+	),
+
+	TP_code_pre(
+            void *page_cached_addr = page_address(page);
+            printk("cached page content test %c%c%c%c%c", *(char *)page_cached_addr,
+                   *(((char *)page_cached_addr) + 1), *(((char *)page_cached_addr) + 2),
+                   *(((char *)page_cached_addr) + 3), *(((char *)page_cached_addr) + 4));
+	),
 
 	TP_FIELDS(
 		ctf_integer(unsigned long, pfn, page_to_pfn(page))
@@ -45,9 +59,10 @@ LTTNG_TRACEPOINT_EVENT_CLASS(
 		ctf_integer(dev_t, s_dev, page->mapping->host->i_sb
 					    ? page->mapping->host->i_sb->s_dev
 					    : page->mapping->host->i_rdev)
-		/* ctf_string(char *, filename, kmalloc(255, GFP_KERNEL); */
-		/* 		dentry_path_raw(file->f_path.dentry,__entry->filename,255)) */
-                  )
+                  ),
+
+	TP_code_post( printk("mmap read event happened"); )
+
 )
 
 
