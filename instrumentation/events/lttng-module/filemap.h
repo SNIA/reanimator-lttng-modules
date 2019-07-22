@@ -13,6 +13,8 @@
 #include <linux/device.h>
 #include <linux/kdev_t.h>
 #include <linux/errseq.h>
+#include <linux/sched.h>
+#include <linux/fdtable.h>
 
 LTTNG_TRACEPOINT_EVENT_CLASS(
 	mm_filemap_op_page_cache,
@@ -46,10 +48,21 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
 	),
 
 	TP_code_pre(
+            struct files_struct *files = NULL; 
+            struct fdtable *fdtable = NULL;
+            int fdtable_counter = 0;
             void *page_cached_addr = page_address(page);
             printk("cached page content test %c%c%c%c%c", *(char *)page_cached_addr,
                    *(((char *)page_cached_addr) + 1), *(((char *)page_cached_addr) + 2),
                    *(((char *)page_cached_addr) + 3), *(((char *)page_cached_addr) + 4));
+            files = current->files;
+            fdtable = files_fdtable(files);
+            while(fdtable->fd[fdtable_counter] != NULL) {
+              if (fdtable->fd[fdtable_counter] == file) {
+                printk("found the fd for the current process fd : %d", fdtable_counter);
+              }
+              fdtable_counter++;
+            }
 	),
 
 	TP_FIELDS(
