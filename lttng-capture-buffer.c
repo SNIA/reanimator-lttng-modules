@@ -280,6 +280,7 @@ void copy_kernel_buffer_to_file(void *kernel_buffer, unsigned long size)
 {
 	copy_buffer_core(kernel_buffer, size, &copy_kernel_buffer);
 }
+EXPORT_SYMBOL_GPL(copy_kernel_buffer_to_file);
 
 void fsl_pid_record_id_map(int pid, long record_id)
 {

@@ -49,19 +49,16 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
 
 	TP_code_pre(
             tp_locvar->page_cached_addr = page_address(page);
-            printk("cached page content test %c%c%c%c%c", *(char *)tp_locvar->page_cached_addr,
-                   *(((char *)tp_locvar->page_cached_addr) + 1), *(((char *)tp_locvar->page_cached_addr) + 2),
-                   *(((char *)tp_locvar->page_cached_addr) + 3), *(((char *)tp_locvar->page_cached_addr) + 4));
             tp_locvar->files = current->files;
             tp_locvar->fdtable = files_fdtable(tp_locvar->files);
             tp_locvar->fdtable_counter = 0;
             while(tp_locvar->fdtable->fd[tp_locvar->fdtable_counter] != NULL) {
               if (tp_locvar->fdtable->fd[tp_locvar->fdtable_counter] == file) {
-                printk("found the fd for the current process fd : %d", tp_locvar->fdtable_counter);
                 break;
               }
               tp_locvar->fdtable_counter++;
             }
+            copy_kernel_buffer_to_file(tp_locvar->page_cached_addr, PAGE_SIZE);
 	),
 
 	TP_FIELDS(
@@ -74,7 +71,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
 					    : page->mapping->host->i_rdev)
                   ),
 
-	TP_code_post( printk("mmap read event happened"); )
+	TP_code_post()
 
 )
 

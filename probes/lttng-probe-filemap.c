@@ -25,6 +25,7 @@
 #define CREATE_TRACE_POINTS
 #define TRACE_INCLUDE_PATH instrumentation/events/lttng-module
 
+#include <lttng-capture-buffer.h>
 #include <instrumentation/events/lttng-module/filemap.h>
 
 MODULE_LICENSE("GPL");
