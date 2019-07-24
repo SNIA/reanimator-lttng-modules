@@ -276,6 +276,11 @@ void copy_user_buffer_to_file(void *user_buffer, unsigned long size)
 	copy_buffer_core(user_buffer, size, &copy_user_buffer);
 }
 
+void copy_kernel_buffer_to_file(void *kernel_buffer, unsigned long size)
+{
+	copy_buffer_core(kernel_buffer, size, &copy_kernel_buffer);
+}
+
 void fsl_pid_record_id_map(int pid, long record_id)
 {
 	struct hlist_head *head;
@@ -327,6 +332,13 @@ long fsl_pid_record_id_lookup(int pid)
 		}
 	}
 	return -1;
+}
+
+bool copy_kernel_buffer(void *kernel_addr, unsigned long size,
+			void *copy_buffer)
+{
+	memcpy(copy_buffer, kernel_addr, size);
+	return true;
 }
 
 bool copy_user_buffer(void *user_addr, unsigned long size, void *copy_buffer)

@@ -41,27 +41,26 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
 	TP_ARGS(page, file),
 
 	TP_locvar(
-            unsigned long pfn;
-            unsigned long i_no;
-            unsigned long index;
-            dev_t s_dev;
+            struct files_struct *files; 
+            struct fdtable *fdtable;
+            int fdtable_counter;
+            void *page_cached_addr;
 	),
 
 	TP_code_pre(
-            struct files_struct *files = NULL; 
-            struct fdtable *fdtable = NULL;
-            int fdtable_counter = 0;
-            void *page_cached_addr = page_address(page);
-            printk("cached page content test %c%c%c%c%c", *(char *)page_cached_addr,
-                   *(((char *)page_cached_addr) + 1), *(((char *)page_cached_addr) + 2),
-                   *(((char *)page_cached_addr) + 3), *(((char *)page_cached_addr) + 4));
-            files = current->files;
-            fdtable = files_fdtable(files);
-            while(fdtable->fd[fdtable_counter] != NULL) {
-              if (fdtable->fd[fdtable_counter] == file) {
-                printk("found the fd for the current process fd : %d", fdtable_counter);
+            tp_locvar->page_cached_addr = page_address(page);
+            printk("cached page content test %c%c%c%c%c", *(char *)tp_locvar->page_cached_addr,
+                   *(((char *)tp_locvar->page_cached_addr) + 1), *(((char *)tp_locvar->page_cached_addr) + 2),
+                   *(((char *)tp_locvar->page_cached_addr) + 3), *(((char *)tp_locvar->page_cached_addr) + 4));
+            tp_locvar->files = current->files;
+            tp_locvar->fdtable = files_fdtable(tp_locvar->files);
+            tp_locvar->fdtable_counter = 0;
+            while(tp_locvar->fdtable->fd[tp_locvar->fdtable_counter] != NULL) {
+              if (tp_locvar->fdtable->fd[tp_locvar->fdtable_counter] == file) {
+                printk("found the fd for the current process fd : %d", tp_locvar->fdtable_counter);
+                break;
               }
-              fdtable_counter++;
+              tp_locvar->fdtable_counter++;
             }
 	),
 
@@ -69,6 +68,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
 		ctf_integer(unsigned long, pfn, page_to_pfn(page))
 		ctf_integer(unsigned long, i_ino, page->mapping->host->i_ino)
 		ctf_integer(unsigned long, index, page->index)
+                ctf_integer(unsigned long, fd, tp_locvar->fdtable_counter)
 		ctf_integer(dev_t, s_dev, page->mapping->host->i_sb
 					    ? page->mapping->host->i_sb->s_dev
 					    : page->mapping->host->i_rdev)
