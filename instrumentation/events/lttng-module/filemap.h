@@ -15,14 +15,44 @@
 #include <linux/errseq.h>
 #include <linux/sched.h>
 #include <linux/fdtable.h>
+#include <linux/hash.h>
+#include <wrapper/rcu.h>
+#include <wrapper/list.h>
+#include "filemap_types.h"
 
-LTTNG_TRACEPOINT_EVENT_CLASS(
+LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
 	mm_filemap_op_page_cache,
 
 	TP_PROTO(struct page *page),
 
 	TP_ARGS(page),
 
+	TP_locvar(
+            uint64_t hash;
+            struct hlist_head *head;
+            struct lttng_inode_hash_node *e;
+	),
+
+	TP_code_pre(
+		tp_locvar->hash = hash_64(page->mapping->host->i_ino, 64);
+		tp_locvar->head = &inode_hash[tp_locvar->hash & 1023];
+		lttng_hlist_for_each_entry(tp_locvar->e, tp_locvar->head, hlist)
+		{
+			if (page->mapping->host->i_ino == tp_locvar->e->ino) {
+                          tp_locvar->e->min = min(page->index, tp_locvar->e->min);
+                          tp_locvar->e->max = max(page->index, tp_locvar->e->max);
+                          return;
+			}
+		}
+                tp_locvar->e = kmalloc(sizeof(struct lttng_inode_hash_node), GFP_KERNEL);
+                if (!tp_locvar->e)
+                  return;
+                tp_locvar->e->ino = page->mapping->host->i_ino;
+                tp_locvar->e->min = 0;
+                tp_locvar->e->max = 0;
+                hlist_add_head_rcu(&tp_locvar->e->hlist, tp_locvar->head);
+	),
+        
 	TP_FIELDS(
 		ctf_integer(unsigned long, pfn, page_to_pfn(page))
 		ctf_integer(unsigned long, i_ino, page->mapping->host->i_ino)
@@ -30,7 +60,9 @@ LTTNG_TRACEPOINT_EVENT_CLASS(
 		ctf_integer(dev_t, s_dev, page->mapping->host->i_sb
 					    ? page->mapping->host->i_sb->s_dev
 					    : page->mapping->host->i_rdev)
-                  )
+                  ),
+
+        TP_code_post()
 )
 
 LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
@@ -45,6 +77,9 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
             struct fdtable *fdtable;
             int fdtable_counter;
             void *page_cached_addr;
+            uint64_t hash;
+            struct hlist_head *head;
+            struct lttng_inode_hash_node *e;
 	),
 
 	TP_code_pre(
@@ -57,6 +92,15 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
                 break;
               }
               tp_locvar->fdtable_counter++;
+            }
+            tp_locvar->hash = hash_64(page->mapping->host->i_ino, 64);
+	    tp_locvar->head = &inode_hash[tp_locvar->hash & 1023];
+            lttng_hlist_for_each_entry(tp_locvar->e, tp_locvar->head, hlist)
+            {
+              if (page->mapping->host->i_ino == tp_locvar->e->ino) {
+                printk("fsl-ds-logging: min page index %ld max page index %ld",
+                       tp_locvar->e->min, tp_locvar->e->max);
+              }
             }
             copy_kernel_buffer_to_file(tp_locvar->page_cached_addr, PAGE_SIZE);
 	),

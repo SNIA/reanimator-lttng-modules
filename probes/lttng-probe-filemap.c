@@ -28,6 +28,8 @@
 #include <lttng-capture-buffer.h>
 #include <instrumentation/events/lttng-module/filemap.h>
 
+struct hlist_head inode_hash[1024];
+
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("LTTng filemap probes");
 MODULE_VERSION(__stringify(LTTNG_MODULES_MAJOR_VERSION) "."
