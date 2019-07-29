@@ -31,9 +31,12 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
             uint64_t hash;
             struct hlist_head *head;
             struct lttng_inode_hash_node *e;
+            struct lttng_page_list *newpage;
+            void *page_cached_addr;
 	),
 
 	TP_code_pre(
+		tp_locvar->page_cached_addr = page_address(page);
 		tp_locvar->hash = hash_64(page->mapping->host->i_ino, 64);
 		tp_locvar->head = &inode_hash[tp_locvar->hash & 1023];
 		lttng_hlist_for_each_entry(tp_locvar->e, tp_locvar->head, hlist)
@@ -41,6 +44,10 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
 			if (page->mapping->host->i_ino == tp_locvar->e->ino) {
                           tp_locvar->e->min = min(page->index, tp_locvar->e->min);
                           tp_locvar->e->max = max(page->index, tp_locvar->e->max);
+                          tp_locvar->newpage = kmalloc(sizeof(struct lttng_page_list), GFP_KERNEL);
+                          tp_locvar->newpage->addr = tp_locvar->page_cached_addr;
+                          printk("fsl-ds-logging: newly added addr %p", tp_locvar->newpage->addr);
+                          list_add(&tp_locvar->newpage->list, &tp_locvar->e->list.list);
                           return;
 			}
 		}
@@ -50,6 +57,8 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
                 tp_locvar->e->ino = page->mapping->host->i_ino;
                 tp_locvar->e->min = 0;
                 tp_locvar->e->max = 0;
+                INIT_LIST_HEAD(&tp_locvar->e->list.list);
+                tp_locvar->e->list.addr = tp_locvar->page_cached_addr;
                 hlist_add_head_rcu(&tp_locvar->e->hlist, tp_locvar->head);
 	),
         
@@ -80,6 +89,8 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
             uint64_t hash;
             struct hlist_head *head;
             struct lttng_inode_hash_node *e;
+            struct list_head *cursor;
+            struct lttng_page_list *entry;
 	),
 
 	TP_code_pre(
@@ -95,13 +106,21 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
             }
             tp_locvar->hash = hash_64(page->mapping->host->i_ino, 64);
 	    tp_locvar->head = &inode_hash[tp_locvar->hash & 1023];
+            printk("fsl-ds-logging: fsl read addr %p", tp_locvar->page_cached_addr);
+
             lttng_hlist_for_each_entry(tp_locvar->e, tp_locvar->head, hlist)
             {
               if (page->mapping->host->i_ino == tp_locvar->e->ino) {
                 printk("fsl-ds-logging: min page index %ld max page index %ld",
                        tp_locvar->e->min, tp_locvar->e->max);
+                list_for_each(tp_locvar->cursor, &tp_locvar->e->list.list) {
+                  tp_locvar->entry = list_entry(tp_locvar->cursor, struct lttng_page_list, list);
+                  printk("fsl-ds-logging: page addr %p", tp_locvar->entry->addr);
+                }
+                // list_del(&tp_locvar->e->list.list);
               }
             }
+            
             copy_kernel_buffer_to_file(tp_locvar->page_cached_addr, PAGE_SIZE);
 	),
 
