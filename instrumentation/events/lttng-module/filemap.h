@@ -91,6 +91,9 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
             struct lttng_inode_hash_node *e;
             struct list_head *cursor;
             struct lttng_page_list *entry;
+            int idx;
+            int number_of_pages;
+            char *buffer;
 	),
 
 	TP_code_pre(
@@ -98,6 +101,8 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
             tp_locvar->files = current->files;
             tp_locvar->fdtable = files_fdtable(tp_locvar->files);
             tp_locvar->fdtable_counter = 0;
+            tp_locvar->number_of_pages = 0;
+            tp_locvar->buffer = NULL;
             while(tp_locvar->fdtable->fd[tp_locvar->fdtable_counter] != NULL) {
               if (tp_locvar->fdtable->fd[tp_locvar->fdtable_counter] == file) {
                 break;
@@ -113,15 +118,32 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
               if (page->mapping->host->i_ino == tp_locvar->e->ino) {
                 printk("fsl-ds-logging: min page index %ld max page index %ld",
                        tp_locvar->e->min, tp_locvar->e->max);
-                list_for_each(tp_locvar->cursor, &tp_locvar->e->list.list) {
+                tp_locvar->number_of_pages = tp_locvar->e->max - tp_locvar->e->min + 1;
+                tp_locvar->buffer = kmalloc(tp_locvar->number_of_pages * PAGE_SIZE, GFP_KERNEL);
+                tp_locvar->idx = 0;
+                list_for_each_prev(tp_locvar->cursor, &tp_locvar->e->list.list) {
                   tp_locvar->entry = list_entry(tp_locvar->cursor, struct lttng_page_list, list);
                   printk("fsl-ds-logging: page addr %p", tp_locvar->entry->addr);
+                  memcpy(tp_locvar->buffer + (PAGE_SIZE * tp_locvar->idx), tp_locvar->entry->addr, PAGE_SIZE);
+                  tp_locvar->idx++;
                 }
-                // list_del(&tp_locvar->e->list.list);
+             delete_all:
+                list_for_each(tp_locvar->cursor, &tp_locvar->e->list.list) {
+                  tp_locvar->entry = list_entry(tp_locvar->cursor, struct lttng_page_list, list);
+                  list_del(&tp_locvar->entry->list);
+                  kfree(tp_locvar->entry);
+                  goto delete_all;
+                }
               }
             }
-            
-            copy_kernel_buffer_to_file(tp_locvar->page_cached_addr, PAGE_SIZE);
+
+            if (tp_locvar->number_of_pages > 0) {
+              // copy_kernel_buffer_to_file(tp_locvar->page_cached_addr, PAGE_SIZE);
+              printk("fsl-ds-logging: #pages %d", tp_locvar->number_of_pages);
+              // printk("fsl-ds-logging: content of the page %s", tp_locvar->buffer);
+              copy_kernel_buffer_to_file(tp_locvar->buffer, tp_locvar->number_of_pages * PAGE_SIZE);
+              kfree(tp_locvar->buffer);
+            }
 	),
 
 	TP_FIELDS(
