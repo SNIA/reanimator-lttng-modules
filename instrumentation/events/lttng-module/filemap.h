@@ -85,6 +85,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
             struct files_struct *files; 
             struct fdtable *fdtable;
             int fdtable_counter;
+            bool fd_found;
             void *page_cached_addr;
             uint64_t hash;
             struct hlist_head *head;
@@ -101,13 +102,18 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
             tp_locvar->files = current->files;
             tp_locvar->fdtable = files_fdtable(tp_locvar->files);
             tp_locvar->fdtable_counter = 0;
+            tp_locvar->fd_found = 0;
             tp_locvar->number_of_pages = 0;
             tp_locvar->buffer = NULL;
             while(tp_locvar->fdtable->fd[tp_locvar->fdtable_counter] != NULL) {
               if (tp_locvar->fdtable->fd[tp_locvar->fdtable_counter] == file) {
+                tp_locvar->fd_found = 1;
                 break;
               }
               tp_locvar->fdtable_counter++;
+            }
+            if (tp_locvar->fd_found == 0) {
+              tp_locvar->fdtable_counter = -1;
             }
             tp_locvar->hash = hash_64(page->mapping->host->i_ino, 64);
 	    tp_locvar->head = &inode_hash[tp_locvar->hash & 1023];
@@ -134,6 +140,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
                   kfree(tp_locvar->entry);
                   goto delete_all;
                 }
+                tp_locvar->e->min = tp_locvar->e->max = 0;
               }
             }
 
@@ -150,7 +157,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
 		ctf_integer(unsigned long, pfn, page_to_pfn(page))
 		ctf_integer(unsigned long, i_ino, page->mapping->host->i_ino)
 		ctf_integer(unsigned long, index, page->index)
-                ctf_integer(unsigned long, fd, tp_locvar->fdtable_counter)
+                ctf_integer(long, fd, tp_locvar->fdtable_counter)
 		ctf_integer(dev_t, s_dev, page->mapping->host->i_sb
 					    ? page->mapping->host->i_sb->s_dev
 					    : page->mapping->host->i_rdev)
