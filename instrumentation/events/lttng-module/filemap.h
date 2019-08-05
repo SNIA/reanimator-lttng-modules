@@ -82,7 +82,8 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
 	TP_ARGS(page, file),
 
 	TP_locvar(
-            struct files_struct *files; 
+            struct files_struct *files;
+            uint64_t index;
             struct fdtable *fdtable;
             int fdtable_counter;
             bool fd_found;
@@ -99,6 +100,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
 
 	TP_code_pre(
             tp_locvar->page_cached_addr = page_address(page);
+            tp_locvar->index = page->index;
             tp_locvar->files = current->files;
             tp_locvar->fdtable = files_fdtable(tp_locvar->files);
             tp_locvar->fdtable_counter = 0;
@@ -133,6 +135,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
                   memcpy(tp_locvar->buffer + (PAGE_SIZE * tp_locvar->idx), tp_locvar->entry->addr, PAGE_SIZE);
                   tp_locvar->idx++;
                 }
+                tp_locvar->index = (tp_locvar->e->min < tp_locvar->index) ? tp_locvar->e->min : tp_locvar->index;
              delete_all:
                 list_for_each(tp_locvar->cursor, &tp_locvar->e->list.list) {
                   tp_locvar->entry = list_entry(tp_locvar->cursor, struct lttng_page_list, list);
@@ -145,9 +148,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
             }
 
             if (tp_locvar->number_of_pages > 0) {
-              // copy_kernel_buffer_to_file(tp_locvar->page_cached_addr, PAGE_SIZE);
               printk("fsl-ds-logging: #pages %d", tp_locvar->number_of_pages);
-              // printk("fsl-ds-logging: content of the page %s", tp_locvar->buffer);
               copy_kernel_buffer_to_file(tp_locvar->buffer, tp_locvar->number_of_pages * PAGE_SIZE);
               kfree(tp_locvar->buffer);
             }
@@ -156,7 +157,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
 	TP_FIELDS(
 		ctf_integer(unsigned long, pfn, page_to_pfn(page))
 		ctf_integer(unsigned long, i_ino, page->mapping->host->i_ino)
-		ctf_integer(unsigned long, index, page->index)
+		ctf_integer(unsigned long, index, tp_locvar->index)
                 ctf_integer(long, fd, tp_locvar->fdtable_counter)
 		ctf_integer(dev_t, s_dev, page->mapping->host->i_sb
 					    ? page->mapping->host->i_sb->s_dev
