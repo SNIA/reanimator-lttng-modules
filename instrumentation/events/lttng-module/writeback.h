@@ -89,6 +89,15 @@ LTTNG_TRACEPOINT_EVENT(writeback_dirty_page,
 	)
 )
 
+LTTNG_TRACEPOINT_EVENT(fsl_writeback_dirty_page,
+	TP_PROTO(struct page *page, int file_desc),
+	TP_ARGS(page, file_desc),
+	TP_FIELDS(
+		ctf_integer(int, fd, file_desc)
+		ctf_integer(pgoff_t, index, page->index)
+	)
+)
+
 LTTNG_TRACEPOINT_EVENT_CLASS(writeback_dirty_inode_template,
 	TP_PROTO(struct inode *inode, int flags),
 	TP_ARGS(inode, flags),
