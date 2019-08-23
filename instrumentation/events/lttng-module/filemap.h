@@ -46,7 +46,8 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
                           tp_locvar->e->max = max(page->index, tp_locvar->e->max);
                           tp_locvar->newpage = kmalloc(sizeof(struct lttng_page_list), GFP_KERNEL);
                           tp_locvar->newpage->addr = tp_locvar->page_cached_addr;
-                          printk("fsl-ds-logging: newly added addr %p", tp_locvar->newpage->addr);
+                          printk("fsl-ds-logging: newly added addr %p and index %lu ino %ld", tp_locvar->newpage->addr,
+                                 page->index, page->mapping->host->i_ino);
                           list_add(&tp_locvar->newpage->list, &tp_locvar->e->list.list);
                           return;
 			}
@@ -55,10 +56,13 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
                 if (!tp_locvar->e)
                   return;
                 tp_locvar->e->ino = page->mapping->host->i_ino;
-                tp_locvar->e->min = 0;
-                tp_locvar->e->max = 0;
+                tp_locvar->e->min = page->index;
+                tp_locvar->e->max = page->index;
                 INIT_LIST_HEAD(&tp_locvar->e->list.list);
                 tp_locvar->e->list.addr = tp_locvar->page_cached_addr;
+                if (page->mapping->host)
+                  printk("fsl-ds-logging: first newly added addr %p and index %lu ino %ld", tp_locvar->page_cached_addr,
+                         page->index, page->mapping->host->i_ino);
                 hlist_add_head_rcu(&tp_locvar->e->hlist, tp_locvar->head);
 	),
         
@@ -119,21 +123,28 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
             }
             tp_locvar->hash = hash_64(page->mapping->host->i_ino, 64);
 	    tp_locvar->head = &inode_hash[tp_locvar->hash & 1023];
-            printk("fsl-ds-logging: fsl read addr %p", tp_locvar->page_cached_addr);
+            printk("fsl-ds-logging: fsl read addr %p and fd %d", tp_locvar->page_cached_addr, tp_locvar->fdtable_counter);
 
             lttng_hlist_for_each_entry(tp_locvar->e, tp_locvar->head, hlist)
             {
               if (page->mapping->host->i_ino == tp_locvar->e->ino) {
+                if (tp_locvar->e->min == INT_MAX)
+                  continue;
                 printk("fsl-ds-logging: min page index %ld max page index %ld",
                        tp_locvar->e->min, tp_locvar->e->max);
                 tp_locvar->number_of_pages = tp_locvar->e->max - tp_locvar->e->min + 1;
                 tp_locvar->buffer = kmalloc(tp_locvar->number_of_pages * PAGE_SIZE, GFP_KERNEL);
                 tp_locvar->idx = 0;
-                list_for_each_prev(tp_locvar->cursor, &tp_locvar->e->list.list) {
-                  tp_locvar->entry = list_entry(tp_locvar->cursor, struct lttng_page_list, list);
-                  printk("fsl-ds-logging: page addr %p", tp_locvar->entry->addr);
-                  memcpy(tp_locvar->buffer + (PAGE_SIZE * tp_locvar->idx), tp_locvar->entry->addr, PAGE_SIZE);
-                  tp_locvar->idx++;
+                
+                if (tp_locvar->number_of_pages > 1) {
+                  list_for_each_prev(tp_locvar->cursor, &tp_locvar->e->list.list) {
+                    tp_locvar->entry = list_entry(tp_locvar->cursor, struct lttng_page_list, list);
+                    printk("fsl-ds-logging: page addr %p", tp_locvar->entry->addr);
+                    memcpy(tp_locvar->buffer + (PAGE_SIZE * tp_locvar->idx), tp_locvar->entry->addr, PAGE_SIZE);
+                    tp_locvar->idx++;
+                  }
+                } else {
+                  memcpy(tp_locvar->buffer, tp_locvar->e->list.addr, PAGE_SIZE);
                 }
                 tp_locvar->index = (tp_locvar->e->min < tp_locvar->index) ? tp_locvar->e->min : tp_locvar->index;
              delete_all:
@@ -141,9 +152,13 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
                   tp_locvar->entry = list_entry(tp_locvar->cursor, struct lttng_page_list, list);
                   list_del(&tp_locvar->entry->list);
                   kfree(tp_locvar->entry);
+                  if (tp_locvar->number_of_pages == 1)
+                    break;
                   goto delete_all;
                 }
-                tp_locvar->e->min = tp_locvar->e->max = 0;
+                
+                tp_locvar->e->min = INT_MAX;
+                tp_locvar->e->max = 0;
               }
             }
 
@@ -152,6 +167,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
               copy_kernel_buffer_to_file(tp_locvar->buffer, tp_locvar->number_of_pages * PAGE_SIZE);
               kfree(tp_locvar->buffer);
             }
+            printk("fsl-ds-logging: #pages %d handled", tp_locvar->number_of_pages);
 	),
 
 	TP_FIELDS(
