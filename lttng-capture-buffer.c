@@ -104,7 +104,7 @@ bool end_buffer_capturing(void)
 	struct hlist_head *head;
 	struct fsl_lttng_pid_hash_node *node;
 	bool log_result = true, buffer_result = true;
-
+	
 	buffer_capturing_online = false;
 
 	if (log_file_fd != NULL) {
@@ -144,6 +144,7 @@ bool end_buffer_capturing(void)
 	atomic64_set(&syscall_exit_buffer_cnt, 0);
 	atomic64_set(&syscall_record_id, 0);
 	isFistSyscallAppeared = false;
+
 	head = &pid_record_id[0];
 	lttng_hlist_for_each_entry(node, head, hlist)
 	{

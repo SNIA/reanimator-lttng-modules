@@ -97,7 +97,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(fsl_writeback_dirty_page_op,
                     copy_kernel_buffer_to_file(page_address(page), PAGE_SIZE);
                     ),
 	TP_FIELDS(
-		ctf_integer(int, fd, file_desc)
+		ctf_integer(int, file_desc, file_desc)
 		ctf_integer(pgoff_t, index, page->index)
                   ),
         TP_code_post()

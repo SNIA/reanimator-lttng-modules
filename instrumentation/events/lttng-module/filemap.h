@@ -16,12 +16,13 @@
 #include <linux/sched.h>
 #include <linux/fdtable.h>
 #include <linux/hash.h>
+#include <linux/dcache.h>
+#include <linux/string.h>
 #include <wrapper/rcu.h>
 #include <wrapper/list.h>
 #include "filemap_types.h"
 
-LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
-	mm_filemap_op_page_cache,
+LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_page_cache,
 
 	TP_PROTO(struct page *page),
 
@@ -62,6 +63,12 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
                     tp_locvar->e->max = page->index;
                     INIT_LIST_HEAD(&tp_locvar->e->list.list);
                     tp_locvar->e->list.addr = tp_locvar->page_cached_addr;
+                    tp_locvar->newpage = kmalloc(sizeof(struct lttng_page_list), GFP_KERNEL);
+                    tp_locvar->newpage->addr = tp_locvar->page_cached_addr;
+                    printk("fsl-ds-logging: newly added addr %p and index %lu ino %ld", tp_locvar->newpage->addr,
+                           page->index, page->mapping->host->i_ino);
+                    list_add(&tp_locvar->newpage->list, &tp_locvar->e->list.list);
+                          
                     if (page->mapping->host)
                       printk("fsl-ds-logging: first newly added addr %p and index %lu ino %ld", tp_locvar->page_cached_addr,
                              page->index, page->mapping->host->i_ino);
@@ -84,12 +91,11 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
         TP_code_post()
 )
 
-LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
-	mm_filemap_op_fsl,
+LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
 
-	TP_PROTO(struct page *page, struct file* file),
+	TP_PROTO(struct page *page, struct file* file, int origin),
 
-	TP_ARGS(page, file),
+	TP_ARGS(page, file, origin),
 
 	TP_locvar(
             struct files_struct *files;
@@ -106,6 +112,8 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
             int idx;
             int number_of_pages;
             char *buffer;
+            char path[256];
+            char *filepath;
 	),
 
 	TP_code_pre(
@@ -117,6 +125,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
             tp_locvar->fd_found = 0;
             tp_locvar->number_of_pages = 0;
             tp_locvar->buffer = NULL;
+            tp_locvar->filepath = dentry_path_raw(file->f_path.dentry, tp_locvar->path, 256);
             while(tp_locvar->fdtable->fd[tp_locvar->fdtable_counter] != NULL) {
               if (tp_locvar->fdtable->fd[tp_locvar->fdtable_counter] == file) {
                 tp_locvar->fd_found = 1;
@@ -124,13 +133,14 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
               }
               tp_locvar->fdtable_counter++;
             }
-            if (tp_locvar->fd_found == 0) {
+            if (tp_locvar->fd_found == 0 || strstr(tp_locvar->filepath, ".so")) {
               tp_locvar->fdtable_counter = -1;
             }
             tp_locvar->hash = hash_64(page->mapping->host->i_ino, 64);
 	    tp_locvar->head = &inode_hash[tp_locvar->hash & 1023];
             printk("fsl-ds-logging: fsl read addr %p and fd %d", tp_locvar->page_cached_addr, tp_locvar->fdtable_counter);
-
+            printk("file path: %s", tp_locvar->filepath);
+            
             lttng_hlist_for_each_entry(tp_locvar->e, tp_locvar->head, hlist)
             {
               if (page->mapping->host->i_ino == tp_locvar->e->ino) {
@@ -181,6 +191,8 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(
 		ctf_integer(unsigned long, i_ino, page->mapping->host->i_ino)
 		ctf_integer(unsigned long, index, tp_locvar->index)
                 ctf_integer(long, fd, tp_locvar->fdtable_counter)
+                ctf_string(filepath, tp_locvar->filepath)
+                ctf_integer(int, reason, origin)
 		ctf_integer(dev_t, s_dev, page->mapping->host->i_sb
 					    ? page->mapping->host->i_sb->s_dev
 					    : page->mapping->host->i_rdev)
@@ -205,8 +217,8 @@ LTTNG_TRACEPOINT_EVENT_INSTANCE(mm_filemap_op_page_cache,
 
 LTTNG_TRACEPOINT_EVENT_INSTANCE(mm_filemap_op_fsl,
 				mm_filemap_fsl_read,
-				TP_PROTO(struct page *page, struct file* file),
-				TP_ARGS(page, file)
+				TP_PROTO(struct page *page, struct file* file, int origin),
+				TP_ARGS(page, file, origin)
 )
 
 LTTNG_TRACEPOINT_EVENT(
