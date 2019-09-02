@@ -28,7 +28,18 @@
 #include <lttng-capture-buffer.h>
 #include <instrumentation/events/lttng-module/filemap.h>
 
-struct hlist_head inode_hash[1024];
+void reset_inode_hash(void) {
+	struct hlist_head *head;
+	struct lttng_inode_hash_node *iterater;
+
+        head = &inode_hash[0];
+	lttng_hlist_for_each_entry(iterater, head, hlist)
+	{
+		iterater->min = INT_MAX;
+		iterater->max = 0;
+	}
+}
+EXPORT_SYMBOL(reset_inode_hash);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("LTTng filemap probes");

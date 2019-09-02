@@ -114,6 +114,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
             char *buffer;
             char path[256];
             char *filepath;
+            int min, max;
 	),
 
 	TP_code_pre(
@@ -162,7 +163,9 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
                 } else {
                   memcpy(tp_locvar->buffer, tp_locvar->e->list.addr, PAGE_SIZE);
                 }
-                tp_locvar->index = (tp_locvar->e->min < tp_locvar->index) ? tp_locvar->e->min : tp_locvar->index;
+                tp_locvar->index = tp_locvar->e->min;
+                tp_locvar->min = tp_locvar->e->min;
+                tp_locvar->max = tp_locvar->e->max;                
              delete_all:
                 list_for_each(tp_locvar->cursor, &tp_locvar->e->list.list) {
                   tp_locvar->entry = list_entry(tp_locvar->cursor, struct lttng_page_list, list);
@@ -182,8 +185,10 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
               printk("fsl-ds-logging: #pages %d", tp_locvar->number_of_pages);
               copy_kernel_buffer_to_file(tp_locvar->buffer, tp_locvar->number_of_pages * PAGE_SIZE);
               kfree(tp_locvar->buffer);
+            } else {
+              return;
             }
-            printk("fsl-ds-logging: #pages %d handled", tp_locvar->number_of_pages);
+            // printk("fsl-ds-logging: #pages %d handled", tp_locvar->number_of_pages);
 	),
 
 	TP_FIELDS(
@@ -193,7 +198,9 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
                 ctf_integer(long, fd, tp_locvar->fdtable_counter)
                 ctf_string(filepath, tp_locvar->filepath)
                 ctf_integer(int, reason, origin)
-		ctf_integer(dev_t, s_dev, page->mapping->host->i_sb
+                ctf_integer(int, min, tp_locvar->min)
+                ctf_integer(int, max, tp_locvar->max)
+                ctf_integer(dev_t, s_dev, page->mapping->host->i_sb
 					    ? page->mapping->host->i_sb->s_dev
 					    : page->mapping->host->i_rdev)
                   ),

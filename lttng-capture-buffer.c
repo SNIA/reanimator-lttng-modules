@@ -14,6 +14,8 @@
 #include <linux/kernel.h>
 #include <linux/kthread.h>
 #include <linux/workqueue.h>
+#include <linux/hashtable.h>
+#include <instrumentation/events/lttng-module/filemap_types.h>
 
 struct writing_control_block {
 	struct work_struct work;
@@ -53,6 +55,23 @@ extern bool isFistSyscallAppeared;
 DECLARE_BITMAP(fsl_syscall_buffer_map, NR_syscalls);
 syscall_buffer_handler syscall_buf_handlers[NR_syscalls];
 
+struct hlist_head inode_hash[1024];
+EXPORT_SYMBOL(inode_hash);
+
+void reset_inode_hash(void)
+{
+	// struct hlist_head *head;
+	struct lttng_inode_hash_node *iterater;
+	int bucket;
+
+	// head = &inode_hash[0];
+	hash_for_each(inode_hash, bucket, iterater, hlist)
+	{
+		iterater->min = INT_MAX;
+		iterater->max = 0;
+	}
+}
+
 bool start_buffer_capturing(void)
 {
 	log_file_fd = buffer_file_fd = NULL;
@@ -91,6 +110,8 @@ bool start_buffer_capturing(void)
 		alloc_workqueue("lttng-buffer-capture-wq",
 				WQ_MEM_RECLAIM | WQ_UNBOUND | WQ_FREEZABLE, 32);
 
+	reset_inode_hash();
+
 	buffer_capturing_online = true;
 
 	printk(KERN_DEBUG
@@ -104,7 +125,7 @@ bool end_buffer_capturing(void)
 	struct hlist_head *head;
 	struct fsl_lttng_pid_hash_node *node;
 	bool log_result = true, buffer_result = true;
-	
+
 	buffer_capturing_online = false;
 
 	if (log_file_fd != NULL) {
