@@ -10,6 +10,9 @@
 #include <linux/backing-dev.h>
 #include <linux/writeback.h>
 #include <linux/version.h>
+#include <asm/stacktrace.h>
+#include <linux/kallsyms.h>
+#include <linux/string.h>
 
 #ifndef _TRACE_WRITEBACK_DEF_
 #define _TRACE_WRITEBACK_DEF_
@@ -90,23 +93,25 @@ LTTNG_TRACEPOINT_EVENT(writeback_dirty_page,
 )
 
 LTTNG_TRACEPOINT_EVENT_CLASS_CODE(fsl_writeback_dirty_page_op,
-	TP_PROTO(struct page *page, int file_desc),
-	TP_ARGS(page, file_desc),
+	TP_PROTO(struct page *page, int file_desc, struct inode *inode),
+	TP_ARGS(page, file_desc, inode),
         TP_locvar(),
         TP_code_pre(
-                    copy_kernel_buffer_to_file(page_address(page), PAGE_SIZE);
+                copy_kernel_buffer_to_file(page_address(page), PAGE_SIZE);
                     ),
 	TP_FIELDS(
 		ctf_integer(int, file_desc, file_desc)
 		ctf_integer(pgoff_t, index, page->index)
+		ctf_integer(unsigned long, ino, inode->i_ino)
+		ctf_integer(long long int, size, i_size_read(inode))
                   ),
         TP_code_post()
 )
 
 LTTNG_TRACEPOINT_EVENT_INSTANCE(fsl_writeback_dirty_page_op,
 			        fsl_writeback_dirty_page,
-				TP_PROTO(struct page *page, int file_desc),
-				TP_ARGS(page, file_desc)
+				TP_PROTO(struct page *page, int file_desc, struct inode *inode),
+				TP_ARGS(page, file_desc, inode)
 )
 
 LTTNG_TRACEPOINT_EVENT_CLASS(writeback_dirty_inode_template,
@@ -119,6 +124,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS(writeback_dirty_inode_template,
 				dev_name(lttng_inode_to_bdi(inode)->dev) : "(unknown)", 32)
 		ctf_integer(unsigned long, ino, inode->i_ino)
 		ctf_integer(unsigned long, state, inode->i_state)
+		ctf_integer(loff_t, size, inode->i_size)
 		ctf_integer(unsigned long, flags, flags)
 	)
 )
