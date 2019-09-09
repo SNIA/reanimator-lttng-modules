@@ -165,17 +165,13 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
                 tp_locvar->buffer = kmalloc(tp_locvar->number_of_pages * PAGE_SIZE, GFP_KERNEL);
                 tp_locvar->idx = 0;
                 
-                if (tp_locvar->number_of_pages > 1) {
-                  list_for_each_prev(tp_locvar->cursor, &tp_locvar->e->list.list) {
-                    tp_locvar->entry = list_entry(tp_locvar->cursor, struct lttng_page_list, list);
-                    #ifdef MMAP_DEBUGGING
-                    printk("fsl-ds-logging: page addr %p", tp_locvar->entry->addr);
-                    #endif
-                    memcpy(tp_locvar->buffer + (PAGE_SIZE * tp_locvar->idx), tp_locvar->entry->addr, PAGE_SIZE);
-                    tp_locvar->idx++;
-                  }
-                } else {
-                  memcpy(tp_locvar->buffer, tp_locvar->e->list.addr, PAGE_SIZE);
+                list_for_each_prev(tp_locvar->cursor, &tp_locvar->e->list.list) {
+                  tp_locvar->entry = list_entry(tp_locvar->cursor, struct lttng_page_list, list);
+                  #ifdef MMAP_DEBUGGING
+                  printk("fsl-ds-logging: page addr %p", tp_locvar->entry->addr);
+                  #endif
+                  memcpy(tp_locvar->buffer + (PAGE_SIZE * tp_locvar->idx), tp_locvar->entry->addr, PAGE_SIZE);
+                  tp_locvar->idx++;
                 }
                 tp_locvar->index = tp_locvar->e->min;
                 tp_locvar->min = tp_locvar->e->min;
@@ -185,8 +181,6 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
                   tp_locvar->entry = list_entry(tp_locvar->cursor, struct lttng_page_list, list);
                   list_del(&tp_locvar->entry->list);
                   kfree(tp_locvar->entry);
-                  if (tp_locvar->number_of_pages == 1)
-                    break;
                   goto delete_all;
                 }
                 
