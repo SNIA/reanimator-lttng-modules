@@ -10,17 +10,6 @@
 #include <linux/tracepoint.h>
 #include <linux/mm.h>
 #include <linux/memcontrol.h>
-#include <linux/device.h>
-#include <linux/kdev_t.h>
-#include <linux/errseq.h>
-#include <linux/sched.h>
-#include <linux/fdtable.h>
-#include <linux/hash.h>
-#include <linux/dcache.h>
-#include <linux/string.h>
-#include <linux/delay.h>
-#include <wrapper/rcu.h>
-#include <wrapper/list.h>
 
 LTTNG_TRACEPOINT_EVENT(mm_filemap_op_page_cache,
 
