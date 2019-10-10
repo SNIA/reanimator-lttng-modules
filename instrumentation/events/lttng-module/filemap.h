@@ -27,7 +27,7 @@ LTTNG_TRACEPOINT_EVENT(mm_filemap_op_page_cache,
 	TP_PROTO(struct page *page),
 
 	TP_ARGS(page),
-        
+
 	TP_FIELDS(
 		ctf_integer(unsigned long, pfn, page_to_pfn(page))
 		ctf_integer(unsigned long, i_ino, page->mapping->host->i_ino)
