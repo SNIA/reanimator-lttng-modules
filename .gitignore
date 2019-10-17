@@ -9,6 +9,7 @@
 #
 # Normal rules
 #
+*.cmd
 *.o
 *.o.*
 *.a
@@ -80,3 +81,4 @@ GTAGS
 \#*#
 
 /extra_version
+.tmp_versions
