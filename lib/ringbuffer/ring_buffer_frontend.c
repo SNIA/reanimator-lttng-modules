@@ -63,6 +63,9 @@ struct switch_offsets {
 		     switch_old_end:1;
 };
 
+union v_atomic jcounter = {0};
+union v_atomic resize_flag = {0};
+
 #ifdef CONFIG_NO_HZ
 enum tick_nohz_val {
 	TICK_NOHZ_STOP,
@@ -176,6 +179,7 @@ void lib_ring_buffer_reset(struct lib_ring_buffer *buf)
 	v_set(config, &buf->records_lost_big, 0);
 	v_set(config, &buf->records_count, 0);
 	v_set(config, &buf->records_overrun, 0);
+	v_set(config, &buf->resize_done, 0);
 	buf->finalized = 0;
 }
 EXPORT_SYMBOL_GPL(lib_ring_buffer_reset);
@@ -1919,6 +1923,7 @@ int lib_ring_buffer_try_reserve_slow(struct lib_ring_buffer *buf,
 {
 	const struct lib_ring_buffer_config *config = &chan->backend.config;
 	unsigned long reserve_commit_diff, offset_cmp;
+	struct channel_backend *chanb;
 
 retry:
 	offsets->begin = offset_cmp = v_read(config, &buf->offset);
@@ -2000,6 +2005,38 @@ retry:
 				 * We do not overwrite non consumed buffers
 				 * and we are full : record is lost.
 				 */
+
+				/*
+				JLOG : we will try to increase the buffer only once.
+				*/
+
+				if(v_cmpxchg(config, &buf->resize_done, 0, 1)== 0){
+					printk("\n First buffer overflow occured %d\n", ctx->cpu);
+				}
+
+				if(v_cmpxchg(config, &resize_flag, 0, 1)== 0){
+						printk("Should resize the buffer here \n");
+						// chanb = &chan->backend;
+						
+						// chanb->num_subbuf *= 2;
+						// chanb->buf_size *= 2;
+
+						printk("Old buf_size_order : %d and num_subbuf_order : %d\n",
+								chanb->buf_size_order,
+								chanb->num_subbuf_order);
+
+						// chanb->buf_size_order = get_count_order(chanb->buf_size);
+						// chanb->num_subbuf_order = get_count_order(chanb->num_subbuf);
+
+						printk("New buf_size_order : %d and num_subbuf_order : %d\n",
+								chanb->buf_size_order,
+								chanb->num_subbuf_order);
+				}else{
+					printk("\nCMPXCHG failed\n");
+				}
+
+				v_inc(config, &jcounter);
+				// printk("Running sum of lost buffers is %ld", v_read(config, &jcounter));
 				v_inc(config, &buf->records_lost_full);
 				return -ENOBUFS;
 			} else {

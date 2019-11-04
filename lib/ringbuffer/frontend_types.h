@@ -105,6 +105,7 @@ struct lib_ring_buffer_iter {
 struct lib_ring_buffer {
 	/* First 32 bytes cache-hot cacheline */
 	union v_atomic offset;		/* Current offset in the buffer */
+	union v_atomic resize_done;
 	struct commit_counters_hot *commit_hot;
 					/* Commit count per sub-buffer */
 	atomic_long_t consumed;		/*

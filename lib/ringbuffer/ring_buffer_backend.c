@@ -43,6 +43,14 @@ int lib_ring_buffer_backend_allocate(const struct lib_ring_buffer_config *config
 	struct page **pages;
 	unsigned long i;
 
+	// printk("Number of pages per sub buffer was %lu \n", (size >> PAGE_SHIFT) >> get_count_order(num_subbuf));
+
+	size *= 2;
+	// printk("Increased size from %lu to %lu\n", size/2, size);
+
+	num_subbuf *= 2;
+	// printk("Increased number of sub buffers from from %lu to %lu\n", num_subbuf/2, num_subbuf);
+
 	num_pages = size >> PAGE_SHIFT;
 
 	/*
@@ -55,6 +63,8 @@ int lib_ring_buffer_backend_allocate(const struct lib_ring_buffer_config *config
 	if (!wrapper_check_enough_free_pages(num_pages))
 		goto not_enough_pages;
 
+	// printk("Enough space for creating %lu pages\n", num_pages);
+
 	/*
 	 * Set the current user thread as the first target of the OOM killer.
 	 * If the estimate received by si_mem_available() was off, and we do
@@ -63,7 +73,10 @@ int lib_ring_buffer_backend_allocate(const struct lib_ring_buffer_config *config
 	 */
 	wrapper_set_current_oom_origin();
 
+
 	num_pages_per_subbuf = num_pages >> get_count_order(num_subbuf);
+	// printk("Number of pages per sub buffer has become %lu\n", num_pages_per_subbuf);
+	
 	subbuf_size = chanb->subbuf_size;
 	num_subbuf_alloc = num_subbuf;
 
