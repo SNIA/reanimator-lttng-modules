@@ -205,6 +205,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
 		ctf_integer(unsigned long, pfn, page_to_pfn(page))
 		ctf_integer(unsigned long, i_ino, page->mapping->host->i_ino)
 		ctf_integer(unsigned long, index, tp_locvar->index)
+		ctf_integer(unsigned long, org_index, page->index)
                 ctf_integer(long, fd, tp_locvar->fdtable_counter)
                 ctf_string(filepath, tp_locvar->filepath)
                 ctf_integer(int, reason, origin)
