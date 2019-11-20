@@ -1985,6 +1985,16 @@ retry:
 			 */
 			goto retry;
 		}
+
+		while (unlikely(config->mode != RING_BUFFER_OVERWRITE &&
+				subbuf_trunc(offsets->begin, chan)
+				 - subbuf_trunc((unsigned long)
+				     atomic_long_read(&buf->consumed), chan)
+			    >= ((4 * chan->backend.buf_size) / 5))) {
+			// Yield the cpu when you fill 80% of the buffer
+			yield();
+		}
+
 		reserve_commit_diff =
 		  (buf_trunc(offsets->begin, chan)
 		   >> chan->backend.num_subbuf_order)
