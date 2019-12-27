@@ -1986,6 +1986,7 @@ retry:
 			goto retry;
 		}
 
+                // FSL: avoiding losing events
 		while (unlikely(config->mode != RING_BUFFER_OVERWRITE &&
 				subbuf_trunc(offsets->begin, chan)
 				 - subbuf_trunc((unsigned long)
@@ -1993,6 +1994,7 @@ retry:
 			    >= ((4 * chan->backend.buf_size) / 5))) {
 			// Yield the cpu when you fill 80% of the buffer
 			yield();
+                        msleep(1);
 		}
 
 		reserve_commit_diff =
