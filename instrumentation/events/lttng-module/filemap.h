@@ -101,9 +101,9 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_page_cache,
 
 LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
 
-	TP_PROTO(struct page *page, struct file* file, int origin),
+	TP_PROTO(struct page *page, struct file* file, int origin, unsigned long address),
 
-	TP_ARGS(page, file, origin),
+	TP_ARGS(page, file, origin, address),
 
 	TP_locvar(
             struct files_struct *files;
@@ -205,6 +205,8 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
 		ctf_integer(unsigned long, pfn, page_to_pfn(page))
 		ctf_integer(unsigned long, i_ino, page->mapping->host->i_ino)
 		ctf_integer(unsigned long, index, tp_locvar->index)
+		ctf_integer(unsigned long, org_index, page->index)
+                ctf_integer(unsigned long, addr, address)
                 ctf_integer(long, fd, tp_locvar->fdtable_counter)
                 ctf_string(filepath, tp_locvar->filepath)
                 ctf_integer(int, reason, origin)
@@ -234,8 +236,8 @@ LTTNG_TRACEPOINT_EVENT_INSTANCE(mm_filemap_op_page_cache,
 
 LTTNG_TRACEPOINT_EVENT_INSTANCE(mm_filemap_op_fsl,
 				mm_filemap_fsl_read,
-				TP_PROTO(struct page *page, struct file* file, int origin),
-				TP_ARGS(page, file, origin)
+				TP_PROTO(struct page *page, struct file* file, int origin, unsigned long address),
+				TP_ARGS(page, file, origin, address)
 )
 
 LTTNG_TRACEPOINT_EVENT(
