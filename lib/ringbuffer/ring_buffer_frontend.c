@@ -1992,7 +1992,7 @@ retry:
 			 */
 			goto retry;
 		}
-                
+
                 /************************************************************/
                 // FSL: avoiding losing events
 		if(consumer_task){
@@ -2008,7 +2008,7 @@ retry:
 					yield();
 					msleep(1);
 				}
-			}	
+			}
 		} else {
 			// printk(KERN_DEBUG "consumer thread not found");
 			while (unlikely(config->mode != RING_BUFFER_OVERWRITE &&
@@ -2018,10 +2018,10 @@ retry:
 					> (chan->backend.buf_size - chan->backend.subbuf_size))) {
 				yield();
 				msleep(1);
-			}	
+			}
                 }
 		/************************************************************/
-                
+
 		reserve_commit_diff =
 		  (buf_trunc(offsets->begin, chan)
 		   >> chan->backend.num_subbuf_order)
