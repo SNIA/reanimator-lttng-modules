@@ -80,6 +80,9 @@ static DEFINE_PER_CPU(spinlock_t, ring_buffer_nohz_lock);
 DEFINE_PER_CPU(unsigned int, lib_ring_buffer_nesting);
 EXPORT_PER_CPU_SYMBOL(lib_ring_buffer_nesting);
 
+struct task_struct *consumer_task;
+EXPORT_SYMBOL(consumer_task);
+
 static
 void lib_ring_buffer_print_errors(struct channel *chan,
 				  struct lib_ring_buffer *buf, int cpu);
@@ -1919,13 +1922,7 @@ int lib_ring_buffer_try_reserve_slow(struct lib_ring_buffer *buf,
 				     struct lib_ring_buffer_ctx *ctx,
 				     void *client_ctx)
 {
-        struct file *file;
-        pid_t pid=0;
-        ssize_t bytes=0;
-        loff_t i_size, pos=0;
-        bool found_yield = false;
         int yield_result = 0;
-        struct task_struct *consumer_task;
 
 	const struct lib_ring_buffer_config *config = &chan->backend.config;
 	unsigned long reserve_commit_diff, offset_cmp;
@@ -1998,49 +1995,32 @@ retry:
                 
                 /************************************************************/
                 // FSL: avoiding losing events
-		file = filp_open("/tmp/yield.sock", O_RDONLY, 0);
-		if(file == NULL) {
-			goto out;
-		}
-		i_size = i_size_read(file_inode(file));
-                if (i_size <= 0) {
-                       filp_close(file,NULL);
-                       goto out;
-                }
-                bytes = kernel_read(file, (void *)&pid, i_size, &pos);
-                if(bytes <= 0){
-                       filp_close(file,NULL);
-                       goto out;
-                }
-                filp_close(file,NULL);
-
-                rcu_read_lock();
-                consumer_task = pid_task(find_vpid(pid), PIDTYPE_PID);
-                if(!consumer_task){
-                       goto out;
-                }
-                get_task_struct(consumer_task);
-                put_task_struct(consumer_task);
-                rcu_read_unlock();
-                found_yield = true;
-       out:
-                while (unlikely(config->mode != RING_BUFFER_OVERWRITE &&
-                                subbuf_trunc(offsets->begin, chan)
-                                 - subbuf_trunc((unsigned long)
-                                     atomic_long_read(&buf->consumed), chan)
-                            > (chan->backend.buf_size - chan->backend.subbuf_size))) {
-			if (found_yield) {
-  				yield_result = yield_to(consumer_task,0);
-  				if (yield_result == 0 || yield_result < 0) {
+		if(consumer_task){
+			// printk(KERN_DEBUG "consumer thread found");
+			while (unlikely(config->mode != RING_BUFFER_OVERWRITE &&
+					subbuf_trunc(offsets->begin, chan)
+							- subbuf_trunc((unsigned long)
+					atomic_long_read(&buf->consumed), chan)
+					> (chan->backend.buf_size - chan->backend.subbuf_size))) {
+				yield_result = yield_to(consumer_task, true);
+				// printk(KERN_DEBUG "yield result %d", yield_result);
+				if (yield_result <= 0) {
 					yield();
 					msleep(1);
 				}
-			} else {
+			}	
+		} else {
+			// printk(KERN_DEBUG "consumer thread not found");
+			while (unlikely(config->mode != RING_BUFFER_OVERWRITE &&
+					subbuf_trunc(offsets->begin, chan)
+							- subbuf_trunc((unsigned long)
+					atomic_long_read(&buf->consumed), chan)
+					> (chan->backend.buf_size - chan->backend.subbuf_size))) {
 				yield();
 				msleep(1);
-                        }
+			}	
                 }
-                /************************************************************/
+		/************************************************************/
                 
 		reserve_commit_diff =
 		  (buf_trunc(offsets->begin, chan)

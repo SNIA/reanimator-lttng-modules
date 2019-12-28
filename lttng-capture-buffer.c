@@ -48,7 +48,7 @@ DEFINE_SPINLOCK(write_lock);
 
 struct hlist_head pid_record_id[FSL_LTTNG_PID_TABLE_SIZE];
 
-atomic64_t syscall_record_id = {0};
+atomic64_t syscall_record_id = { 0 };
 extern atomic64_t syscall_exit_buffer_cnt;
 extern bool isFistSyscallAppeared;
 
@@ -58,6 +58,8 @@ syscall_buffer_handler syscall_buf_handlers[NR_syscalls];
 struct hlist_head inode_hash[1024];
 EXPORT_SYMBOL(inode_hash);
 
+extern struct task_struct *consumer_task;
+
 void reset_inode_hash(void)
 {
 	// struct hlist_head *head;
@@ -65,8 +67,7 @@ void reset_inode_hash(void)
 	int bucket;
 
 	// head = &inode_hash[0];
-	hash_for_each(inode_hash, bucket, iterater, hlist)
-	{
+	hash_for_each (inode_hash, bucket, iterater, hlist) {
 		iterater->min = INT_MAX;
 		iterater->max = 0;
 	}
@@ -74,6 +75,10 @@ void reset_inode_hash(void)
 
 bool start_buffer_capturing(void)
 {
+	struct file *consumer_file = NULL;
+	ssize_t consumer_bytes = 0;
+	loff_t consumer_pos = 0;
+	pid_t consumer_thread_pid;
 	log_file_fd = buffer_file_fd = NULL;
 
 	log_file_fd = file_open(LOG_PATH, O_WRONLY | O_LARGEFILE, 0777);
@@ -102,6 +107,26 @@ bool start_buffer_capturing(void)
 		printk(KERN_DEBUG
 		       "fsl-ds-logging: Can not open the buffer file\n");
 		return false;
+	}
+
+	consumer_file = filp_open("/tmp/yield.sock", O_RDONLY, 0);
+	if (consumer_file != NULL) {
+		consumer_bytes =
+			kernel_read(consumer_file, (void *)&consumer_thread_pid,
+				    sizeof(pid_t), &consumer_pos);
+		if (consumer_bytes <= 0) {
+			filp_close(consumer_file, NULL);
+		} else {
+			printk(KERN_DEBUG
+			       "fsl-ds-logging: consumer thread id %d",
+			       consumer_thread_pid);
+			rcu_read_lock();
+			consumer_task = pid_task(find_vpid(consumer_thread_pid),
+						 PIDTYPE_PID);
+			rcu_read_unlock();
+		}
+	} else {
+		filp_close(consumer_file, NULL);
 	}
 
 	initialize_syscall_buffer_map();
@@ -159,6 +184,7 @@ bool end_buffer_capturing(void)
 	printk(KERN_DEBUG "fsl-ds-logging: number of read syscalls %lld",
 	       atomic64_read(&syscall_exit_buffer_cnt));
 
+	consumer_task = NULL;
 	flush_workqueue(async_writing_wq);
 	destroy_workqueue(async_writing_wq);
 	log_file_offset = buffer_file_offset = 0;
@@ -181,8 +207,8 @@ void log_syscall_args(long syscall_no, unsigned long *args,
 		      unsigned int nr_args)
 {
 	int print_len = 200, arg_len = 50;
-	char print_buffer[200] = {0};
-	char arg_buffer[50] = {0};
+	char print_buffer[200] = { 0 };
+	char arg_buffer[50] = { 0 };
 	int arg_idx;
 	int ret = -1;
 	int buffer_length = 0;
@@ -257,8 +283,8 @@ void copy_buffer_core(void *user_buffer, unsigned long size,
 		virtual_kernel_memory_allocation = true;
 	}
 
-	if (buffer_file_fd == NULL || kernel_buffer == NULL
-	    || buffer_capturing_online == false) {
+	if (buffer_file_fd == NULL || kernel_buffer == NULL ||
+	    buffer_capturing_online == false) {
 		return;
 	}
 
@@ -266,8 +292,8 @@ void copy_buffer_core(void *user_buffer, unsigned long size,
 		     fsl_pid_record_id_lookup(current->pid));
 	kernel_buffer->sizeOfBuffer = size;
 
-	if (size != 0
-	    && fptr(user_buffer, size, (void *)&kernel_buffer->buffer)) {
+	if (size != 0 &&
+	    fptr(user_buffer, size, (void *)&kernel_buffer->buffer)) {
 		spin_lock(&write_lock);
 		write_offset = buffer_file_offset;
 		buffer_file_offset += total_size;
@@ -333,8 +359,8 @@ void fsl_syscall_buffer_handler(long syscall_no, fsl_event_type event,
 	if (event == syscall_buffer_compat) {
 		return;
 	}
-	if (test_bit(syscall_no, fsl_syscall_buffer_map)
-	    && fsl_pid_record_id_lookup(current->pid) != -1) {
+	if (test_bit(syscall_no, fsl_syscall_buffer_map) &&
+	    fsl_pid_record_id_lookup(current->pid) != -1) {
 		syscall_buffer_handler handler =
 			syscall_buf_handlers[syscall_no];
 		handler(event, args, nr_args, ret);
