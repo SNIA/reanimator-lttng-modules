@@ -1996,21 +1996,21 @@ retry:
                 /************************************************************/
                 // FSL: avoiding losing events
 		if(consumer_task){
-			// printk(KERN_DEBUG "consumer thread found");
+			printk(KERN_DEBUG "consumer thread found");
 			while (unlikely(config->mode != RING_BUFFER_OVERWRITE &&
 					subbuf_trunc(offsets->begin, chan)
 							- subbuf_trunc((unsigned long)
 					atomic_long_read(&buf->consumed), chan)
 					> (chan->backend.buf_size - chan->backend.subbuf_size))) {
 				yield_result = yield_to(consumer_task, true);
-				// printk(KERN_DEBUG "yield result %d", yield_result);
+				printk(KERN_DEBUG "yield result %d", yield_result);
 				if (yield_result <= 0) {
 					yield();
 					msleep(1);
 				}
 			}
 		} else {
-			// printk(KERN_DEBUG "consumer thread not found");
+			printk(KERN_DEBUG "consumer thread not found");
 			while (unlikely(config->mode != RING_BUFFER_OVERWRITE &&
 					subbuf_trunc(offsets->begin, chan)
 							- subbuf_trunc((unsigned long)

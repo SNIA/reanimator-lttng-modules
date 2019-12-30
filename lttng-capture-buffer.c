@@ -114,9 +114,8 @@ bool start_buffer_capturing(void)
 		consumer_bytes =
 			kernel_read(consumer_file, (void *)&consumer_thread_pid,
 				    sizeof(pid_t), &consumer_pos);
-		if (consumer_bytes <= 0) {
-			filp_close(consumer_file, NULL);
-		} else {
+		filp_close(consumer_file, NULL);
+		if (consumer_bytes > 0) {
 			printk(KERN_DEBUG
 			       "fsl-ds-logging: consumer thread id %d",
 			       consumer_thread_pid);
@@ -125,8 +124,6 @@ bool start_buffer_capturing(void)
 						 PIDTYPE_PID);
 			rcu_read_unlock();
 		}
-	} else {
-		filp_close(consumer_file, NULL);
 	}
 
 	initialize_syscall_buffer_map();
