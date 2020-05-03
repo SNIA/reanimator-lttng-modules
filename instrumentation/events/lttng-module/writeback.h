@@ -97,7 +97,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(fsl_writeback_dirty_page_op,
 	TP_ARGS(page, file_desc, inode),
         TP_locvar(),
         TP_code_pre(
-                copy_kernel_buffer_to_file(page_address(page), PAGE_SIZE);
+            // copy_kernel_buffer_to_file(page_address(page), PAGE_SIZE);
                     ),
 	TP_FIELDS(
 		ctf_integer(int, file_desc, file_desc)
@@ -397,6 +397,19 @@ LTTNG_TRACEPOINT_EVENT_WBC_INSTANCE(wbc_balance_dirty_written, writeback_wbc_bal
 LTTNG_TRACEPOINT_EVENT_WBC_INSTANCE(wbc_balance_dirty_wait, writeback_wbc_balance_dirty_wait)
 #endif
 LTTNG_TRACEPOINT_EVENT_WBC_INSTANCE(wbc_writepage, writeback_wbc_writepage)
+
+LTTNG_TRACEPOINT_EVENT(wbc_writepage_fsl,
+
+	TP_PROTO(struct page *page, struct address_space *mapping),
+
+	TP_ARGS(page, mapping),
+
+	TP_FIELDS(
+		ctf_integer_hex(struct page *, page, page)
+		ctf_integer(unsigned long, i_ino, mapping->host->i_ino)
+		ctf_integer(unsigned long, index, page->index)
+	)
+)
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,1,0))
 LTTNG_TRACEPOINT_EVENT(writeback_queue_io,

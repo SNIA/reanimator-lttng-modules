@@ -151,7 +151,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
             printk("fsl-ds-logging: fsl read addr %p and fd %d", tp_locvar->page_cached_addr, tp_locvar->fdtable_counter);
             printk("file path: %s", tp_locvar->filepath);
             #endif
-            udelay(600);
+            // udelay(600);
             lttng_hlist_for_each_entry(tp_locvar->e, tp_locvar->head, hlist)
             {
               if (page->mapping->host->i_ino == tp_locvar->e->ino) {
@@ -193,7 +193,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
               #ifdef MMAP_DEBUGGING
               printk("fsl-ds-logging: #pages %d", tp_locvar->number_of_pages);
               #endif
-              copy_kernel_buffer_to_file(tp_locvar->buffer, tp_locvar->number_of_pages * PAGE_SIZE);
+              // copy_kernel_buffer_to_file(tp_locvar->buffer, tp_locvar->number_of_pages * PAGE_SIZE);
               kfree(tp_locvar->buffer);
             } else {
               // printk("fsl-ds-logging: fail page idx %ld reason %d", page->index, origin);
