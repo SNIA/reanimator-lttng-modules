@@ -62,6 +62,7 @@ static struct file_operations lttng_stream_ring_buffer_file_operations;
 static int put_u64(uint64_t val, unsigned long arg);
 
 static bool isFSLModuleInitialized = false;
+static int sync_count = 0;
 
 /*
  * Teardown management: opened file descriptors keep a refcount on the module,
@@ -325,12 +326,16 @@ long lttng_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case LTTNG_KERNEL_WAIT_QUIESCENT:
 	{
 		if (arg == 0) {
+		        sync_count++;
 			if (!isFSLModuleInitialized) {
 				start_buffer_capturing();
 				isFSLModuleInitialized = true;
 			} else {
-				end_buffer_capturing();
-				isFSLModuleInitialized = false;
+			        if (sync_count > 5) {
+				  end_buffer_capturing();
+				  isFSLModuleInitialized = false;
+				  sync_count = 0;
+				}
 			}
 		}
 		synchronize_trace();
