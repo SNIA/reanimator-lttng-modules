@@ -5,7 +5,8 @@
  * LTTng trace/channel/event context management.
  *
  * Copyright (C) 2011-2012 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
- */
+ * Copyright (c) 2019 Erez Zadok
+ * Copyright (c) 2019 Ibrahim Umit Akgun */
 
 #include <linux/module.h>
 #include <linux/list.h>

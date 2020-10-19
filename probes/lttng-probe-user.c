@@ -3,7 +3,8 @@
  * lttng-probe-user.c
  *
  * Copyright (C) 2012 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
- */
+ * Copyright (c) 2019 Erez Zadok
+ * Copyright (c) 2019 Ibrahim Umit Akgun */
 
 #include <linux/uaccess.h>
 #include <linux/module.h>

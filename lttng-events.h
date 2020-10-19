@@ -5,7 +5,8 @@
  * Holds LTTng per-session event registry.
  *
  * Copyright (C) 2010-2012 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
- */
+ * Copyright (c) 2019 Erez Zadok
+ * Copyright (c) 2019 Ibrahim Umit Akgun */
 
 #ifndef _LTTNG_EVENTS_H
 #define _LTTNG_EVENTS_H

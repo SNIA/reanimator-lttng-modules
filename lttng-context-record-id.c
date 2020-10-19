@@ -4,8 +4,8 @@
  *
  * LTTng CPU id context.
  *
- * Copyright (C) FSL Stony Brook
- */
+ * Copyright (c) 2019 Erez Zadok
+ * Copyright (c) 2019 Ibrahim Umit Akgun */
 
 #include <linux/module.h>
 #include <linux/slab.h>

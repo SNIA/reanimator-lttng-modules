@@ -6,6 +6,8 @@
  *
  * Copyright (C) 2010-2012 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
+ * Copyright (c) 2019 Erez Zadok
+ * Copyright (c) 2019 Ibrahim Umit Akgun
  * Mimic system calls for:
  * - session creation, returns a file descriptor or failure.
  *   - channel creation, returns a file descriptor or failure.
