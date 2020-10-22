@@ -4,7 +4,8 @@
  *
  * Copyright (C) 2009 Steven Rostedt <rostedt@goodmis.org>
  * Copyright (C) 2009-2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
- */
+ * Copyright (c) 2019 Erez Zadok
+ * Copyright (c) 2019 Ibrahim Umit Akgun */
 
 #include <linux/uaccess.h>
 #include <linux/debugfs.h>

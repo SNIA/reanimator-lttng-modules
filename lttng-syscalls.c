@@ -5,7 +5,8 @@
  * LTTng syscall probes.
  *
  * Copyright (C) 2010-2012 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
- */
+ * Copyright (c) 2019 Erez Zadok
+ * Copyright (c) 2019 Ibrahim Umit Akgun */
 
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -555,7 +556,7 @@ void syscall_exit_probe(void *__data, struct pt_regs *regs, long ret)
 	const struct trace_syscall_entry *table, *entry;
 	size_t table_len;
 	long id;
-        fsl_event_type fsl_event = syscall_buffer_exit; 
+        fsl_event_type fsl_event = syscall_buffer_exit;
 
 	id = syscall_get_nr(current, regs);
 	if (unlikely(in_compat_syscall())) {

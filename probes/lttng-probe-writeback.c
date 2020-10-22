@@ -6,7 +6,8 @@
  *
  * Copyright (C) 2010-2012 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  * Copyright (C) 2012 Mentor Graphics Corp.
- */
+ * Copyright (c) 2019 Erez Zadok
+ * Copyright (c) 2019 Ibrahim Umit Akgun */
 
 #include <linux/module.h>
 #include <linux/device.h>
