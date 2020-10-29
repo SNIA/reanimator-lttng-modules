@@ -5,7 +5,8 @@
  * LTTng Process ID tracking.
  *
  * Copyright (C) 2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
- */
+ * Copyright (c) 2019 Erez Zadok
+ * Copyright (c) 2019 Ibrahim Umit Akgun */
 
 #include <linux/module.h>
 #include <linux/slab.h>

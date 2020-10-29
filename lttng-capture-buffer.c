@@ -2,8 +2,8 @@
  *
  * lttng-capture-buffer.c
  *
- * Copyright (C) 2018 FSL Stony Brook University
- */
+ * Copyright (c) 2019 Erez Zadok
+ * Copyright (c) 2019 Ibrahim Umit Akgun */
 
 #include <lttng-capture-buffer.h>
 #include <fsl-lttng-syscall-handlers.h>

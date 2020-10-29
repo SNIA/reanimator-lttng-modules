@@ -1,4 +1,6 @@
-// Copyright FSL Stony Brook
+/*
+ * Copyright (c) 2019 Erez Zadok
+ * Copyright (c) 2019 Ibrahim Umit Akgun */
 
 #ifndef FILEMAP_TYPES
 #define FILEMAP_TYPES
