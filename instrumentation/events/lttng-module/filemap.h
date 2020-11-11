@@ -151,7 +151,6 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
             printk("fsl-ds-logging: fsl read addr %p and fd %d", tp_locvar->page_cached_addr, tp_locvar->fdtable_counter);
             printk("file path: %s", tp_locvar->filepath);
             #endif
-            udelay(600);
             lttng_hlist_for_each_entry(tp_locvar->e, tp_locvar->head, hlist)
             {
               if (page->mapping->host->i_ino == tp_locvar->e->ino) {
@@ -162,42 +161,9 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
                        tp_locvar->e->min, tp_locvar->e->max, origin);
                 #endif
                 tp_locvar->number_of_pages = tp_locvar->e->max - tp_locvar->e->min + 1;
-                // tp_locvar->buffer = kmalloc(tp_locvar->number_of_pages * PAGE_SIZE, GFP_KERNEL);
-                // tp_locvar->idx = 0;
-                
-                // list_for_each_prev(tp_locvar->cursor, &tp_locvar->e->list.list) {
-                //   tp_locvar->entry = list_entry(tp_locvar->cursor, struct lttng_page_list, list);
-                //   #ifdef MMAP_DEBUGGING
-                //   printk("fsl-ds-logging: page addr %p", tp_locvar->entry->addr);
-                //   #endif
-                //   memcpy(tp_locvar->buffer + (PAGE_SIZE * tp_locvar->idx), tp_locvar->entry->addr, PAGE_SIZE);
-                //   tp_locvar->idx++;
-                // }
-                /* tp_locvar->index = tp_locvar->e->min; */
-             /*    tp_locvar->min = tp_locvar->e->min; */
-             /*    tp_locvar->max = tp_locvar->e->max;                 */
-             /* delete_all: */
-             /*    list_for_each(tp_locvar->cursor, &tp_locvar->e->list.list) { */
-             /*      tp_locvar->entry = list_entry(tp_locvar->cursor, struct lttng_page_list, list); */
-             /*      list_del(&tp_locvar->entry->list); */
-             /*      kfree(tp_locvar->entry); */
-             /*      goto delete_all; */
-             /*    } */
-                
                 tp_locvar->e->min = INT_MAX;
                 tp_locvar->e->max = 0;
               }
-            }
-
-            if (tp_locvar->number_of_pages > 0) {
-              #ifdef MMAP_DEBUGGING
-              printk("fsl-ds-logging: #pages %d", tp_locvar->number_of_pages);
-              #endif
-              // copy_kernel_buffer_to_file(tp_locvar->buffer, tp_locvar->number_of_pages * PAGE_SIZE);
-              // kfree(tp_locvar->buffer);
-            } else {
-              // printk("fsl-ds-logging: fail page idx %ld reason %d", page->index, origin);
-              return;
             }
 	),
 
@@ -210,8 +176,8 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
                 ctf_integer(long, fd, tp_locvar->fdtable_counter)
                 ctf_string(filepath, tp_locvar->filepath)
                 ctf_integer(int, reason, origin)
-                ctf_integer(int, min, tp_locvar->min)
-                ctf_integer(int, max, tp_locvar->max)
+                ctf_integer(int, min, tp_locvar->number_of_pages)
+                ctf_integer(int, max, tp_locvar->number_of_pages)
                 ctf_integer(dev_t, s_dev, page->mapping->host->i_sb
 					    ? page->mapping->host->i_sb->s_dev
 					    : page->mapping->host->i_rdev)
