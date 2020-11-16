@@ -34,8 +34,12 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_page_cache,
 	TP_locvar(
             uint64_t hash;
             struct hlist_head *head;
+            struct fsl_file_hash_node *f_node;
             struct lttng_inode_hash_node *e;
             struct lttng_page_list *newpage;
+            struct file *file;
+            char path[256];
+            char *filepath;
             void *page_cached_addr;
             bool new_one;
 	),
@@ -85,12 +89,30 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_page_cache,
                     printk("fsl-ds-logging: not enough memory add to page cache");
                   }
                 }
+
+                tp_locvar->file = NULL;
+                if (file_hash != NULL) {
+                  tp_locvar->hash = hash_64(page->mapping->host->i_ino, 64);
+                  tp_locvar->head = &file_hash[tp_locvar->hash & 1023];
+                  hlist_for_each_entry(tp_locvar->f_node, tp_locvar->head, hlist) {
+                    if (tp_locvar->f_node->ino == page->mapping->host->i_ino) {
+                      tp_locvar->file = tp_locvar->f_node->f;
+                      printk("fnode %ld %p", tp_locvar->f_node->ino, tp_locvar->f_node->f);
+                    }
+                  }
+
+                  if (tp_locvar->file != NULL) {
+                    // tp_locvar->filepath = dentry_path_raw(tp_locvar->file->f_path.dentry, tp_locvar->path, 256);
+                    printk("file path: %ld %p", page->mapping->host->i_ino, tp_locvar->file);
+                  }
+                }
 	),
         
 	TP_FIELDS(
 		ctf_integer(unsigned long, pfn, page_to_pfn(page))
 		ctf_integer(unsigned long, i_ino, page->mapping->host->i_ino)
 		ctf_integer(unsigned long, index, page->index)
+                // ctf_string(filepath, tp_locvar->file ? tp_locvar->filepath : "")
 		ctf_integer(dev_t, s_dev, page->mapping->host->i_sb
 					    ? page->mapping->host->i_sb->s_dev
 					    : page->mapping->host->i_rdev)

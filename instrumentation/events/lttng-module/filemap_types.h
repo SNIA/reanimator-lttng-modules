@@ -22,4 +22,10 @@ struct lttng_inode_hash_node {
 	struct lttng_page_list list;
 };
 
+struct fsl_file_hash_node {
+	struct hlist_node hlist;
+	struct file *f;
+	unsigned long ino;
+};
+
 #endif
