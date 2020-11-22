@@ -37,9 +37,8 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_page_cache,
             struct fsl_file_hash_node *f_node;
             struct lttng_inode_hash_node *e;
             struct lttng_page_list *newpage;
-            struct file *file;
-            char path[256];
             char *filepath;
+            unsigned int ra_pages;
             void *page_cached_addr;
             bool new_one;
 	),
@@ -90,20 +89,17 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_page_cache,
                   }
                 }
 
-                tp_locvar->file = NULL;
+                tp_locvar->filepath = NULL;
+                tp_locvar->ra_pages = -1;
                 if (file_hash != NULL) {
                   tp_locvar->hash = hash_64(page->mapping->host->i_ino, 64);
                   tp_locvar->head = &file_hash[tp_locvar->hash & 1023];
                   hlist_for_each_entry(tp_locvar->f_node, tp_locvar->head, hlist) {
                     if (tp_locvar->f_node->ino == page->mapping->host->i_ino) {
-                      tp_locvar->file = tp_locvar->f_node->f;
-                      printk("fnode %ld %p", tp_locvar->f_node->ino, tp_locvar->f_node->f);
+                      // printk("fnode %ld %s", tp_locvar->f_node->ino, tp_locvar->f_node->filepath);
+                      tp_locvar->filepath = tp_locvar->f_node->filepath;
+                      tp_locvar->ra_pages = tp_locvar->f_node->ra_pages;
                     }
-                  }
-
-                  if (tp_locvar->file != NULL) {
-                    // tp_locvar->filepath = dentry_path_raw(tp_locvar->file->f_path.dentry, tp_locvar->path, 256);
-                    printk("file path: %ld %p", page->mapping->host->i_ino, tp_locvar->file);
                   }
                 }
 	),
@@ -112,7 +108,8 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_page_cache,
 		ctf_integer(unsigned long, pfn, page_to_pfn(page))
 		ctf_integer(unsigned long, i_ino, page->mapping->host->i_ino)
 		ctf_integer(unsigned long, index, page->index)
-                // ctf_string(filepath, tp_locvar->file ? tp_locvar->filepath : "")
+                ctf_integer(unsigned int, ra_pages, tp_locvar->ra_pages)
+                ctf_string(filepath, tp_locvar->filepath ? tp_locvar->filepath : "")
 		ctf_integer(dev_t, s_dev, page->mapping->host->i_sb
 					    ? page->mapping->host->i_sb->s_dev
 					    : page->mapping->host->i_rdev)

@@ -24,7 +24,9 @@ struct lttng_inode_hash_node {
 
 struct fsl_file_hash_node {
 	struct hlist_node hlist;
-	struct file *f;
+	char path[256];
+	char *filepath;
+	unsigned int ra_pages;
 	unsigned long ino;
 };
 
