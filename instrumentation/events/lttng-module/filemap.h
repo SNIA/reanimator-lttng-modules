@@ -41,6 +41,9 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_page_cache,
             unsigned int ra_pages;
             void *page_cached_addr;
             bool new_one;
+            s64 atime, mtime, ctime;
+            umode_t mode;
+            unsigned int flags;
 	),
 
 	TP_code_pre(
@@ -102,6 +105,11 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_page_cache,
                     }
                   }
                 }
+                tp_locvar->atime = timespec64_to_ns(&(page->mapping->host->i_atime));
+                tp_locvar->mtime = timespec64_to_ns(&(page->mapping->host->i_mtime));
+                tp_locvar->ctime = timespec64_to_ns(&(page->mapping->host->i_ctime));
+                tp_locvar->mode = page->mapping->host->i_mode;
+                tp_locvar->flags = page->mapping->host->i_flags;
 	),
         
 	TP_FIELDS(
@@ -113,6 +121,11 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_page_cache,
 		ctf_integer(dev_t, s_dev, page->mapping->host->i_sb
 					    ? page->mapping->host->i_sb->s_dev
 					    : page->mapping->host->i_rdev)
+		ctf_integer(s64, atime, tp_locvar->atime)
+		ctf_integer(s64, mtime, tp_locvar->mtime)
+		ctf_integer(s64, ctime, tp_locvar->ctime)
+		ctf_integer(umode_t, mode, tp_locvar->mode)
+		ctf_integer(unsigned int, flags, tp_locvar->flags)
                   ),
 
         TP_code_post()
@@ -142,6 +155,9 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
             char path[256];
             char *filepath;
             int min, max;
+            s64 atime, mtime, ctime;
+            umode_t mode;
+            unsigned int flags;
 	),
 
 	TP_code_pre(
@@ -184,6 +200,11 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
                 tp_locvar->e->max = 0;
               }
             }
+            tp_locvar->atime = timespec64_to_ns(&(page->mapping->host->i_atime));
+            tp_locvar->mtime = timespec64_to_ns(&(page->mapping->host->i_mtime));
+            tp_locvar->ctime = timespec64_to_ns(&(page->mapping->host->i_ctime));
+            tp_locvar->mode = page->mapping->host->i_mode;
+            tp_locvar->flags = page->mapping->host->i_flags;
 	),
 
 	TP_FIELDS(
@@ -200,6 +221,11 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
                 ctf_integer(dev_t, s_dev, page->mapping->host->i_sb
 					    ? page->mapping->host->i_sb->s_dev
 					    : page->mapping->host->i_rdev)
+		ctf_integer(s64, atime, tp_locvar->atime)
+		ctf_integer(s64, mtime, tp_locvar->mtime)
+		ctf_integer(s64, ctime, tp_locvar->ctime)
+		ctf_integer(umode_t, mode, tp_locvar->mode)
+		ctf_integer(unsigned int, flags, tp_locvar->flags)
                   ),
 
 	TP_code_post()
