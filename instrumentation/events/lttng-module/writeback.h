@@ -13,6 +13,7 @@
 #include <asm/stacktrace.h>
 #include <linux/kallsyms.h>
 #include <linux/string.h>
+#include "filemap_types.h"
 
 #ifndef _TRACE_WRITEBACK_DEF_
 #define _TRACE_WRITEBACK_DEF_
@@ -95,15 +96,42 @@ LTTNG_TRACEPOINT_EVENT(writeback_dirty_page,
 LTTNG_TRACEPOINT_EVENT_CLASS_CODE(fsl_writeback_dirty_page_op,
 	TP_PROTO(struct page *page, int file_desc, struct inode *inode),
 	TP_ARGS(page, file_desc, inode),
-        TP_locvar(),
+        TP_locvar(
+            char *filepath;
+            unsigned int ra_pages;
+            uint64_t hash;
+            struct hlist_head *head;
+            struct fsl_file_hash_node *f_node;
+        ),
         TP_code_pre(
                 copy_kernel_buffer_to_file(page_address(page), PAGE_SIZE);
-                    ),
+                tp_locvar->filepath = NULL;
+                tp_locvar->ra_pages = -1;
+                if (file_hash != NULL) {
+                  tp_locvar->hash = hash_64(page->mapping->host->i_ino, 64);
+                  tp_locvar->head = &file_hash[tp_locvar->hash & 1023];
+                  hlist_for_each_entry(tp_locvar->f_node, tp_locvar->head, hlist) {
+                    if (tp_locvar->f_node->ino == page->mapping->host->i_ino) {
+                      tp_locvar->filepath = tp_locvar->f_node->filepath;
+                      tp_locvar->ra_pages = tp_locvar->f_node->ra_pages;
+                    }
+                  }
+                }
+            ),
 	TP_FIELDS(
 		ctf_integer(int, file_desc, file_desc)
 		ctf_integer(pgoff_t, index, page->index)
 		ctf_integer(unsigned long, ino, inode->i_ino)
 		ctf_integer(long long int, size, i_size_read(inode))
+		ctf_integer(s64, atime, timespec64_to_ns(&(inode->i_atime)))
+                ctf_integer(s64, mtime, timespec64_to_ns(&(inode->i_mtime)))
+                ctf_integer(s64, ctime, timespec64_to_ns(&(inode->i_ctime)))
+		ctf_integer(umode_t, mode, inode->i_mode)
+		ctf_integer(unsigned int, flags, inode->i_flags)
+		ctf_integer(unsigned long, dirtied_when, inode->dirtied_when)
+		ctf_integer(unsigned long, dirtied_time_when, inode->dirtied_time_when)
+                ctf_integer(unsigned int, ra_pages, tp_locvar->ra_pages)
+                ctf_string(filepath, tp_locvar->filepath ? tp_locvar->filepath : "")
                   ),
         TP_code_post()
 )

@@ -44,6 +44,9 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_page_cache,
             s64 atime, mtime, ctime;
             umode_t mode;
             unsigned int flags;
+            loff_t size;
+            unsigned long dirtied_when;
+            unsigned long dirtied_time_when;
 	),
 
 	TP_code_pre(
@@ -59,7 +62,8 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_page_cache,
                           tp_locvar->newpage = kmalloc(sizeof(struct lttng_page_list), GFP_KERNEL);
                           tp_locvar->newpage->addr = tp_locvar->page_cached_addr;
                           #ifdef MMAP_DEBUGGING
-                          printk("fsl-ds-logging: newly added addr %p and index %lu ino %ld", tp_locvar->newpage->addr,
+                          printk("fsl-ds-logging: newly added addr %p and index %lu ino %ld",
+                                 tp_locvar->newpage->addr,
                                  page->index, page->mapping->host->i_ino);
                           #endif
                           list_add(&tp_locvar->newpage->list, &tp_locvar->e->list.list);
@@ -77,13 +81,15 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_page_cache,
                     tp_locvar->newpage = kmalloc(sizeof(struct lttng_page_list), GFP_KERNEL);
                     tp_locvar->newpage->addr = tp_locvar->page_cached_addr;
                     #ifdef MMAP_DEBUGGING
-                    printk("fsl-ds-logging: newly added addr %p and index %lu ino %ld", tp_locvar->newpage->addr,
+                    printk("fsl-ds-logging: newly added addr %p and index %lu ino %ld",
+                           tp_locvar->newpage->addr,
                            page->index, page->mapping->host->i_ino);
                     #endif
                     list_add(&tp_locvar->newpage->list, &tp_locvar->e->list.list);
                     #ifdef MMAP_DEBUGGING
                     if (page->mapping->host)
-                      printk("fsl-ds-logging: first newly added addr %p and index %lu ino %ld", tp_locvar->page_cached_addr,
+                      printk("fsl-ds-logging: first newly added addr %p and index %lu ino %ld",
+                             tp_locvar->page_cached_addr,
                              page->index, page->mapping->host->i_ino);
                     #endif
                     hlist_add_head_rcu(&tp_locvar->e->hlist, tp_locvar->head);
@@ -99,7 +105,6 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_page_cache,
                   tp_locvar->head = &file_hash[tp_locvar->hash & 1023];
                   hlist_for_each_entry(tp_locvar->f_node, tp_locvar->head, hlist) {
                     if (tp_locvar->f_node->ino == page->mapping->host->i_ino) {
-                      // printk("fnode %ld %s", tp_locvar->f_node->ino, tp_locvar->f_node->filepath);
                       tp_locvar->filepath = tp_locvar->f_node->filepath;
                       tp_locvar->ra_pages = tp_locvar->f_node->ra_pages;
                     }
@@ -110,6 +115,9 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_page_cache,
                 tp_locvar->ctime = timespec64_to_ns(&(page->mapping->host->i_ctime));
                 tp_locvar->mode = page->mapping->host->i_mode;
                 tp_locvar->flags = page->mapping->host->i_flags;
+                tp_locvar->size = page->mapping->host->i_size;
+                tp_locvar->dirtied_when = page->mapping->host->dirtied_when;
+                tp_locvar->dirtied_time_when = page->mapping->host->dirtied_time_when;
 	),
         
 	TP_FIELDS(
@@ -126,6 +134,9 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_page_cache,
 		ctf_integer(s64, ctime, tp_locvar->ctime)
 		ctf_integer(umode_t, mode, tp_locvar->mode)
 		ctf_integer(unsigned int, flags, tp_locvar->flags)
+		ctf_integer(loff_t, size, tp_locvar->size)
+		ctf_integer(unsigned long, dirtied_when, tp_locvar->dirtied_when)
+		ctf_integer(unsigned long, dirtied_time_when, tp_locvar->dirtied_time_when)
                   ),
 
         TP_code_post()
@@ -158,6 +169,9 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
             s64 atime, mtime, ctime;
             umode_t mode;
             unsigned int flags;
+            loff_t size;
+            unsigned long dirtied_when;
+            unsigned long dirtied_time_when;
 	),
 
 	TP_code_pre(
@@ -183,7 +197,8 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
             tp_locvar->hash = hash_64(page->mapping->host->i_ino, 64);
 	    tp_locvar->head = &inode_hash[tp_locvar->hash & 1023];
             #ifdef MMAP_DEBUGGING
-            printk("fsl-ds-logging: fsl read addr %p and fd %d", tp_locvar->page_cached_addr, tp_locvar->fdtable_counter);
+            printk("fsl-ds-logging: fsl read addr %p and fd %d", tp_locvar->page_cached_addr,
+                   tp_locvar->fdtable_counter);
             printk("file path: %s", tp_locvar->filepath);
             #endif
             lttng_hlist_for_each_entry(tp_locvar->e, tp_locvar->head, hlist)
@@ -205,6 +220,9 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
             tp_locvar->ctime = timespec64_to_ns(&(page->mapping->host->i_ctime));
             tp_locvar->mode = page->mapping->host->i_mode;
             tp_locvar->flags = page->mapping->host->i_flags;
+            tp_locvar->size = page->mapping->host->i_size;
+            tp_locvar->dirtied_when = page->mapping->host->dirtied_when;
+            tp_locvar->dirtied_time_when = page->mapping->host->dirtied_time_when;
 	),
 
 	TP_FIELDS(
@@ -215,6 +233,7 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
                 ctf_integer(unsigned long, addr, address)
                 ctf_integer(long, fd, tp_locvar->fdtable_counter)
                 ctf_string(filepath, tp_locvar->filepath)
+                ctf_integer(unsigned int, ra_pages, file->f_ra.ra_pages)
                 ctf_integer(int, reason, origin)
                 ctf_integer(int, min, tp_locvar->number_of_pages)
                 ctf_integer(int, max, tp_locvar->number_of_pages)
@@ -226,6 +245,9 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_fsl,
 		ctf_integer(s64, ctime, tp_locvar->ctime)
 		ctf_integer(umode_t, mode, tp_locvar->mode)
 		ctf_integer(unsigned int, flags, tp_locvar->flags)
+		ctf_integer(loff_t, size, tp_locvar->size)
+		ctf_integer(unsigned long, dirtied_when, tp_locvar->dirtied_when)
+		ctf_integer(unsigned long, dirtied_time_when, tp_locvar->dirtied_time_when)
                   ),
 
 	TP_code_post()
@@ -247,7 +269,8 @@ LTTNG_TRACEPOINT_EVENT_INSTANCE(mm_filemap_op_page_cache,
 
 LTTNG_TRACEPOINT_EVENT_INSTANCE(mm_filemap_op_fsl,
 				mm_filemap_fsl_read,
-				TP_PROTO(struct page *page, struct file* file, int origin, unsigned long address),
+				TP_PROTO(struct page *page, struct file* file,
+                                         int origin, unsigned long address),
 				TP_ARGS(page, file, origin, address)
 )
 
