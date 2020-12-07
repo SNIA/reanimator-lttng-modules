@@ -53,39 +53,40 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_page_cache,
                 tp_locvar->new_one = false;
                 tp_locvar->page_cached_addr = page_address(page);
                 tp_locvar->hash = hash_64(page->mapping->host->i_ino, 64);
+                spin_lock(&inode_hash_lock);
 		tp_locvar->head = &inode_hash[tp_locvar->hash & 1023];
 		lttng_hlist_for_each_entry(tp_locvar->e, tp_locvar->head, hlist)
 		{
 			if (page->mapping->host->i_ino == tp_locvar->e->ino) {
                           tp_locvar->e->min = min(page->index, tp_locvar->e->min);
                           tp_locvar->e->max = max(page->index, tp_locvar->e->max);
-                          tp_locvar->newpage = kmalloc(sizeof(struct lttng_page_list), GFP_KERNEL);
+                          tp_locvar->newpage = kmalloc(sizeof(struct lttng_page_list), GFP_ATOMIC);
                           tp_locvar->newpage->addr = tp_locvar->page_cached_addr;
                           #ifdef MMAP_DEBUGGING
                           printk("fsl-ds-logging: newly added addr %p and index %lu ino %ld",
                                  tp_locvar->newpage->addr,
                                  page->index, page->mapping->host->i_ino);
                           #endif
-                          list_add(&tp_locvar->newpage->list, &tp_locvar->e->list.list);
+                          list_add_rcu(&tp_locvar->newpage->list, &tp_locvar->e->list.list);
                           tp_locvar->new_one = true;
 			}
 		}
                 if (!tp_locvar->new_one) {
-                  tp_locvar->e = kmalloc(sizeof(struct lttng_inode_hash_node), GFP_KERNEL);
+                  tp_locvar->e = kmalloc(sizeof(struct lttng_inode_hash_node), GFP_ATOMIC);
                   if (tp_locvar->e) {
                     tp_locvar->e->ino = page->mapping->host->i_ino;
                     tp_locvar->e->min = page->index;
                     tp_locvar->e->max = page->index;
                     INIT_LIST_HEAD(&tp_locvar->e->list.list);
                     tp_locvar->e->list.addr = tp_locvar->page_cached_addr;
-                    tp_locvar->newpage = kmalloc(sizeof(struct lttng_page_list), GFP_KERNEL);
+                    tp_locvar->newpage = kmalloc(sizeof(struct lttng_page_list), GFP_ATOMIC);
                     tp_locvar->newpage->addr = tp_locvar->page_cached_addr;
                     #ifdef MMAP_DEBUGGING
                     printk("fsl-ds-logging: newly added addr %p and index %lu ino %ld",
                            tp_locvar->newpage->addr,
                            page->index, page->mapping->host->i_ino);
                     #endif
-                    list_add(&tp_locvar->newpage->list, &tp_locvar->e->list.list);
+                    list_add_rcu(&tp_locvar->newpage->list, &tp_locvar->e->list.list);
                     #ifdef MMAP_DEBUGGING
                     if (page->mapping->host)
                       printk("fsl-ds-logging: first newly added addr %p and index %lu ino %ld",
@@ -97,7 +98,8 @@ LTTNG_TRACEPOINT_EVENT_CLASS_CODE(mm_filemap_op_page_cache,
                     printk("fsl-ds-logging: not enough memory add to page cache");
                   }
                 }
-
+                spin_unlock(&inode_hash_lock);
+		
                 tp_locvar->filepath = NULL;
                 tp_locvar->ra_pages = -1;
                 if (file_hash != NULL) {

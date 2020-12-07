@@ -58,6 +58,9 @@ syscall_buffer_handler syscall_buf_handlers[NR_syscalls];
 struct hlist_head inode_hash[1024];
 EXPORT_SYMBOL(inode_hash);
 
+DEFINE_SPINLOCK(inode_hash_lock);
+EXPORT_SYMBOL(inode_hash_lock);
+
 void reset_inode_hash(void)
 {
 	// struct hlist_head *head;

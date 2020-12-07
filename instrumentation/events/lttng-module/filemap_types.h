@@ -5,9 +5,11 @@
 
 #include <linux/list.h>
 #include <linux/fs.h>
+#include <linux/spinlock_types.h>
 
 extern struct hlist_head inode_hash[1024];
 extern struct hlist_head file_hash[1024];
+extern spinlock_t inode_hash_lock;
 
 struct lttng_page_list {
 	void *addr;
